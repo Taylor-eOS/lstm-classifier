@@ -1,0 +1,13 @@
+librosa
+torch
+torchvision
+pyyaml
+tqdm
+scikit-learn
+tensorboard
+matplotlib
+h5py
+colorama
+webrtcvad
+pandas
+wget
