@@ -20,6 +20,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.getcwd())
 from data_utils import AdPodTorchDataset, plot_confusion_matrix  # noqa
 np.random.seed(42)
+
 class SUPERVISED_ADD(nn.Module):
     def __init__(self,
                  input_shape=(251, 40),
@@ -38,12 +39,10 @@ class SUPERVISED_ADD(nn.Module):
                             self.config['HIDDEN_SIZE'],
                             self.config['NUM_LAYERS'],
                             batch_first=True,
-                            bidirectional=True)
-        self.linear1 = nn.Linear(2*self.config['HIDDEN_SIZE'],
-                                 self.config['EMBEDDING_SIZE'])
-        self.linear2 = nn.Linear(self.config['EMBEDDING_SIZE'], int(
-            self.config['EMBEDDING_SIZE']/3))
-        self.linear3 = nn.Linear(int(self.config['EMBEDDING_SIZE']/3), 2)
+                            bidirectional=False)
+        self.linear1 = nn.Linear(self.config['HIDDEN_SIZE'], self.config['EMBEDDING_SIZE'])  # Adjusted from 2*self.config['HIDDEN_SIZE']
+        self.linear2 = nn.Linear(self.config['EMBEDDING_SIZE'], int(self.config['EMBEDDING_SIZE'] / 3))
+        self.linear3 = nn.Linear(int(self.config['EMBEDDING_SIZE'] / 3), 2)
         self.dropout = nn.Dropout()
         self.relu = nn.ReLU()
         self.softmax = torch.nn.Softmax()
@@ -77,6 +76,7 @@ class SUPERVISED_ADD(nn.Module):
         self.writer = SummaryWriter(log_dir=os.path.join(
             run_log_dir, "run_{}".format(
                 len(os.listdir(run_log_dir)) if os.path.exists(run_log_dir) else 0)))
+
     def forward(self, frames):
         o, (h, _) = self.lstm(frames)  # lstm out,hidden,
         x = torch.mean(o, dim=1)
@@ -86,12 +86,15 @@ class SUPERVISED_ADD(nn.Module):
         x = self.relu(x)
         x = self.linear3(x)
         return x
+
     def loss_fn(self, loss_, outs, labels):
         loss_ = loss_(outs, labels)
         return loss_
+
     def direct_classification_loss(self, embeds, labels):
         labels = labels.reshape(-1, 1).squeeze()
         return self.ce_loss(embeds, labels)
+
     def train_loop(self,
                    opt,
                    lr_scheduler,
@@ -109,7 +112,8 @@ class SUPERVISED_ADD(nn.Module):
                                                         drop_last=True)
         if self.load_model:
             self.load_model_cpt(cpt=cpt)
-        for epoch in range(self.epoch, 10):
+        for epoch in range(self.epoch, 1):
+            print(f"Epoch: {epoch}")
             for i, (data, labels) in enumerate(train_iterator):
                 print(data.shape)
                 data = data.view(
@@ -136,6 +140,7 @@ class SUPERVISED_ADD(nn.Module):
                         'optimizer_state_dict': opt.state_dict(),
                         'loss': self.loss,
                     }, self.model_save_string.format(epoch))
+
     def accuracy(self):
         acc = 0
         ix = 0
@@ -152,6 +157,7 @@ class SUPERVISED_ADD(nn.Module):
             if i == 1:
                 break
         return acc/ix
+
     def val_loss(self):
         with torch.no_grad():
             val_loss = []
@@ -167,6 +173,7 @@ class SUPERVISED_ADD(nn.Module):
                 if ix == self.config['VAL_LOSS_COUNT']:
                     break
         return torch.mean(torch.stack(val_loss)).data.item()
+
     def load_model_cpt(self, cpt=0, opt=None, device=torch.device('cuda')):
         self.epoch = int(cpt)
         model_pickle = torch.load(self.model_save_string.format(self.epoch),
@@ -179,10 +186,12 @@ class SUPERVISED_ADD(nn.Module):
         self.loss = model_pickle['loss']
         print("Loaded Model at epoch {},with loss {}".format(
             self.epoch, self.loss))
+
     def infer(self, fname, cpt=None):
         aud = preprocess_aud(fname)
         embeds = self.embed(aud, group=True)
         return embeds
+
     def dataset_metrics(self):
         acc = 0
         ix = 0

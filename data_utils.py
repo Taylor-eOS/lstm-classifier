@@ -23,7 +23,7 @@ from sklearn.metrics import confusion_matrix
 from itertools import product
 import json
 import wget
-# nopep8
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.getcwd())
 warnings.filterwarnings("ignore")
@@ -116,17 +116,11 @@ def preprocess_aud(aud_input, sr=44100):
     trim_len = len(aud) % SMOOTHING_WSIZE
     aud = np.append(aud, np.zeros(SMOOTHING_WSIZE - trim_len))
     assert len(aud) % SMOOTHING_WSIZE == 0, print(len(aud) % trim_len, aud)
-    # pcm_16 = np.round(
-    #     (np.iinfo(np.int16).max * aud)).astype(np.int16).tobytes()
-    # voices = [
-    #     VAD.is_speech(pcm_16[2 * ix:2 * (ix + SMOOTHING_WSIZE)],
-    #                   sample_rate=SAMPLING_RATE)
-    #     for ix in range(0, len(aud), SMOOTHING_WSIZE)
-    # ]
+
     voices = detect_voices(aud, SAMPLING_RATE)
     smoothing_mask = np.repeat(
         binary_dilation(voices, np.ones(SMOOTHING_LENGTH)), SMOOTHING_WSIZE)
-    # print(len(smoothing_mask))
+
     aud = aud[smoothing_mask]
     try:
         aud = normalization(aud, norm_type='peak')
@@ -134,7 +128,6 @@ def preprocess_aud(aud_input, sr=44100):
     except AssertionError as e:
         print(AssertionError("Empty audio sig"))
         return aud, SAMPLING_RATE
-        # exit()
 
 def mel_spectogram(aud):
     """
@@ -143,11 +136,11 @@ def mel_spectogram(aud):
     Returns:
     """
     mel = librosa.feature.melspectrogram(
-        y=aud,                # Input audio signal (required)
-        sr=SAMPLING_RATE,     # Sample rate
-        n_fft=N_FFT,          # Number of FFT components
-        hop_length=H_L,       # Number of audio frames between STFT columns
-        n_mels=MEL_CHANNELS   # Number of Mel bands to generate
+        y=aud,                
+        sr=SAMPLING_RATE,     
+        n_fft=N_FFT,          
+        hop_length=H_L,       
+        n_mels=MEL_CHANNELS   
     )
     return mel
 
@@ -158,7 +151,7 @@ def split_audio_ixs(n_samples, rate=STEP_SIZE_EM, min_coverage=0.75):
     Returns:
     """
     assert 0 < min_coverage <= 1
-    # Compute how many frames separate two partial utterances
+
     samples_per_frame = int((SAMPLING_RATE * WINDOW_STEP_DIARIZATION / 1000))
     n_frames = int(np.ceil((n_samples + 1) / samples_per_frame))
     frame_step = int(np.round((SAMPLING_RATE / rate) / samples_per_frame))
@@ -238,7 +231,7 @@ class AdPodTorchDataset(data.Dataset):
                 self.pod_data, category, sample(wav_files, 1)[0])
             rand_wav_file = rand_wav_file.replace(self.pod_data, self.raw_dir)
             wav, sr = librosa.load(rand_wav_file, sr=None)
-            # wav, sr = preprocess_aud(wav, SAMPLING_RATE)
+
             if len(wav) > 4*SAMPLING_RATE:
                 break
         rand_wav_ix = randint(0, len(wav)-(3*SAMPLING_RATE))
@@ -275,9 +268,7 @@ class AdPodFileTorchDataset(data.Dataset):
             self.config = safe_load(f.read())
 
     def __len__(self):
-        # return len([
-        #     e2 for e1 in os.listdir(self.pod_data) for e2 in os.listdir(os.path.join(self.pod_data,e1))
-        # ])
+
         return len(os.listdir(self.config['PODS_DIR']))
         return len(self.pods_info)
 
@@ -285,9 +276,9 @@ class AdPodFileTorchDataset(data.Dataset):
         print(ix)
         pod = self.pods_info[ix]
         pod_name = wget.filename_from_url(pod['content_url'])
-        # pod_name = 'a182f2b0-e229-4035-82cd-77a7447068f9_2.wav'
+
         pod_name = os.path.join(self.config['PODS_DIR'], pod_name)
-        # pod_aud = load_audio(pod_name, self.config['SAMPLING_RATE'])
+
         ads = len(pod['ads'])
         return pod_name, ads
 
