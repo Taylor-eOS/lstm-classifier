@@ -5,10 +5,13 @@ import argparse
 def run_inference(file_path):
     result = subprocess.run(['python', 'main.py', '--mode', 'infer', '--file', file_path], capture_output=True, text=True)
     output = result.stdout.strip()
-    if 'ads' in output:
+    if 'A' in output:
+        print('a')
         return 'a'
-    elif 'broadcast' in output:
+    elif 'B' in output:
+        print('b')
         return 'b'
+    print('none')
     return None
 
 def evaluate_accuracy(directory):
@@ -19,10 +22,8 @@ def evaluate_accuracy(directory):
             print(f'{file_name}')
             total_files += 1
             true_class = file_name.split('_')[-1][0]
-            #print(f'{true_class}')
             file_path = os.path.join(directory, file_name)
             predicted_class = run_inference(file_path)
-            #print(f'{predicted_class}')
             if predicted_class == true_class:
                 correct_predictions += 1
                 print('correct')
@@ -36,7 +37,5 @@ def evaluate_accuracy(directory):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Batch inference script")
-    #parser.add_argument('--dir', type=str, required=True, help="Directory containing .wav files for inference")
-    #args = parser.parse_args()
     evaluate_accuracy('eval/')
 
