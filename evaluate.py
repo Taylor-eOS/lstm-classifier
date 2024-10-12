@@ -29,6 +29,7 @@ def evaluate_accuracy(directory):
                 print('correct')
             else:
                 print('wrong')
+            print('')
     if total_files > 0:
         accuracy = (correct_predictions / total_files) * 100
         print(f'Accuracy: {accuracy:.2f}% ({correct_predictions}/{total_files} correct predictions)')

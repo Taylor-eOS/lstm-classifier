@@ -13,8 +13,6 @@ def move_random_files(src_folder, dest_folder, percentage=0.1):
         dest_file = os.path.join(dest_folder, file_name)
         shutil.move(src_file, dest_file)
 
-src_folderA = 'raw_cut/A'
-src_folderB = 'raw_cut/B'
-move_random_files(src_folderA, os.path.join(src_folderA, 'val'))
-move_random_files(src_folderB, os.path.join(src_folderB, 'val'))
+move_random_files('raw_cut/A', 'raw_cut/A/val')
+move_random_files('raw_cut/B', 'raw_cut/B/val')
 

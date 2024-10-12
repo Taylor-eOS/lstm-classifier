@@ -25,3 +25,4 @@ for folder in src_folders:
     src_folder = os.path.join(folder)
     dest_folder = os.path.join(dest_base, os.path.basename(folder))
     split_audio_files(src_folder, dest_folder)
+

@@ -1,11 +1,11 @@
 import os
+import argparse
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import argparse
+import numpy as np
 from torch.utils.data import DataLoader
 from utils import AudioDataset, preprocess_audio
-import numpy as np
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 SAMPLING_RATE = 4000
@@ -13,7 +13,7 @@ N_MFCC = 13
 HIDDEN_SIZE = 128
 NUM_LAYERS = 2
 BATCH_SIZE = 32
-EPOCHS = 2
+EPOCHS = 3
 LEARNING_RATE = 0.001
 SEQ_LENGTH = 100
 TRAIN_DIR = 'train'
@@ -93,8 +93,8 @@ def main():
             train(model, train_loader, criterion, optimizer)
             evaluate(model, val_loader, criterion)
             print('-' * 20)
-        torch.save(model.state_dict(), 'audio_classifier.pth')
-        print('Model saved as audio_classifier.pth')
+        torch.save(model.state_dict(), 'sltm_classifier_model.pth')
+        print('Model saved')
     elif args.mode == 'infer':
         if args.file is None:
             print('Please provide a file path with --file for inference mode.')
@@ -102,7 +102,7 @@ def main():
         if not os.path.exists(args.file):
             print(f'File "{args.file}" does not exist.')
             return
-        model.load_state_dict(torch.load('audio_classifier.pth', map_location=DEVICE))
+        model.load_state_dict(torch.load('sltm_classifier_model.pth', map_location=DEVICE))
         infer(model, args.file)
 
 if __name__ == '__main__':
