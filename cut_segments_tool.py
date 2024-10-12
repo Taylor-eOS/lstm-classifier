@@ -26,7 +26,6 @@ def parse_segments(segments_file_path):
                     start_sec = convert_time_to_seconds(start)
                     end_sec = convert_time_to_seconds(end)
                     timestamps.extend([start_sec * 1000, end_sec * 1000])
-                # Remove the first and last timestamps (overall start and end)
                 if len(timestamps) < 2:
                     print(f"Not enough timestamps for {filename}.")
                     continue
@@ -36,7 +35,7 @@ def parse_segments(segments_file_path):
 
 def split_audio(input_dir, output_dir, segments_dict):
     for type_dir in ['A', 'B']:
-        type_path = os.path.join(output_dir)
+        type_path = os.path.join(output_dir, type_dir)
         if not os.path.exists(type_path):
             os.makedirs(type_path)
     for filename, split_points in segments_dict.items():
@@ -70,7 +69,7 @@ def split_audio(input_dir, output_dir, segments_dict):
 
 def main():
     input_dir = 'input'
-    output_dir = 'raw'
+    output_dir = 'output'
     segments_file = os.path.join(input_dir, 'segments.txt')
     if not os.path.isfile(segments_file):
         print(f"Segments file not found: {segments_file}")
@@ -84,3 +83,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
