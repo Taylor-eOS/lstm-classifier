@@ -4,6 +4,31 @@ from torch.utils.data import Dataset
 import numpy as np
 import librosa
 
+def convert_time_to_seconds(time_str):
+    parts = time_str.split(':')
+    try:
+        if len(parts) == 3:
+            hours, minutes, seconds = parts
+        elif len(parts) == 2:
+            hours = 0
+            minutes, seconds = parts
+        elif len(parts) == 1:
+            hours = 0
+            minutes = 0
+            seconds = parts[0]
+        else:
+            raise ValueError(f"Invalid time format: {time_str}")
+
+        total_seconds = (
+            int(hours) * 3600 +
+            int(minutes) * 60 +
+            float(seconds)
+        )
+        return total_seconds
+    except ValueError as ve:
+        print(f"Error parsing time '{time_str}': {ve}")
+        sys.exit(1)
+
 def preprocess_audio(file_path, sampling_rate=8000, n_mels=40, seq_length=100):
     # Load and resample audio
     audio, sr = librosa.load(file_path, sr=sampling_rate)

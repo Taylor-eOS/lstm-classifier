@@ -17,7 +17,7 @@ N_MELS = 40  # Number of Mel filterbanks
 HIDDEN_SIZE = 64  # Reduced hidden size
 NUM_LAYERS = 1  # Reduced number of LSTM layers
 BATCH_SIZE = 16  # Reduced batch size
-EPOCHS = 30  # Fewer epochs for quicker training
+EPOCHS = 100  # Fewer epochs for quicker training
 LEARNING_RATE = 0.001  # Learning rate for optimizer
 SEQ_LENGTH = 100  # Number of frames per sample
 
@@ -30,7 +30,7 @@ class AudioClassifier(nn.Module):
     def __init__(self):
         super(AudioClassifier, self).__init__()
         self.lstm = nn.LSTM(input_size=N_MELS, hidden_size=HIDDEN_SIZE, num_layers=NUM_LAYERS, batch_first=True)
-        self.fc = nn.Linear(HIDDEN_SIZE, 2)  # Assuming two classes: ads and non-ads
+        self.fc = nn.Linear(HIDDEN_SIZE, 2)  # Assuming two classes: ads and broadcast
         self.softmax = nn.LogSoftmax(dim=1)
 
     def forward(self, x):
@@ -79,7 +79,7 @@ def infer(model, file_path):
     with torch.no_grad():
         outputs = model(features)
         preds = outputs.argmax(dim=1)
-    classes = ['ads', 'non-ads']
+    classes = ['ads', 'broadcast']
     print(f'The audio file "{file_path}" is predicted as: {classes[preds.item()]}')
 
 def main():
