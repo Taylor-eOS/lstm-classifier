@@ -13,7 +13,7 @@ N_MFCC = 13
 HIDDEN_SIZE = 128
 NUM_LAYERS = 2
 BATCH_SIZE = 32
-EPOCHS = 10
+EPOCHS = 50
 LEARNING_RATE = 0.001
 SEQ_LENGTH = 100
 
@@ -73,7 +73,8 @@ def infer(model, file_path):
         outputs = model(features)
         preds = outputs.argmax(dim=1)
     classes = ['ads', 'broadcast']
-    print(f'The audio file "{file_path}" is predicted as: {classes[preds.item()]}')
+    print(f'Prediction: {classes[preds.item()]}')
+    return classes[preds.item()]
 
 def main():
     model = AudioClassifier().to(DEVICE)
