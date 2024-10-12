@@ -93,7 +93,7 @@ def split_audio(input_dir, output_dir, segments_dict):
 
 def main():
     input_dir = 'input'
-    output_dir = 'output'
+    output_dir = 'raw'
     segments_file = os.path.join(input_dir, 'segments.txt')
     if not os.path.isfile(segments_file):
         print(f"Segments file not found: {segments_file}")

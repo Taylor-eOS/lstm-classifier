@@ -38,5 +38,5 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Batch inference script")
     #parser.add_argument('--dir', type=str, required=True, help="Directory containing .wav files for inference")
     #args = parser.parse_args()
-    evaluate_accuracy('.')
+    evaluate_accuracy('eval/')
 

@@ -1,7 +1,7 @@
 import os
 from pydub import AudioSegment
 
-def split_audio_files(src_folder, dest_folder, chunk_length_ms=5000):
+def split_audio_files(src_folder, dest_folder, chunk_length_ms=10000):
     # Ensure destination folder exists
     if not os.path.exists(dest_folder):
         os.makedirs(dest_folder)

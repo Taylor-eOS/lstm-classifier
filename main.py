@@ -13,10 +13,9 @@ N_MFCC = 13
 HIDDEN_SIZE = 128
 NUM_LAYERS = 2
 BATCH_SIZE = 32
-EPOCHS = 50
+EPOCHS = 40
 LEARNING_RATE = 0.001
 SEQ_LENGTH = 100
-
 TRAIN_DIR = 'train'
 VAL_DIR = 'val'
 
@@ -72,7 +71,7 @@ def infer(model, file_path):
     with torch.no_grad():
         outputs = model(features)
         preds = outputs.argmax(dim=1)
-    classes = ['ads', 'broadcast']
+    classes = ['A', 'B']
     print(f'Prediction: {classes[preds.item()]}')
     return classes[preds.item()]
 

@@ -28,7 +28,7 @@ class AudioDataset(Dataset):
         self.seq_length = seq_length
         self.sampling_rate = sampling_rate
         self.n_mfcc = n_mfcc
-        classes = ['ads', 'broadcast']
+        classes = ['A', 'B']
         for label, class_name in enumerate(classes):
             class_dir = os.path.join(data_dir, class_name)
             if not os.path.isdir(class_dir):
