@@ -1,12 +1,13 @@
 ## SLTM-Classifier
 
 This is an educational machine learning project that can classify audio chunks into types with the help of a machine learning.
-It is a rewrite of [podcast-ad-detection](https://github.com/amsterg/Podcast-Ad-Detection), to which the creative credit belongs.<p>
+It is a rewrite of [podcast-ad-detection](https://github.com/amsterg/Podcast-Ad-Detection), to which the creative credit belongs.
+This version is less fine-frained, and set up for home use. Training is fast and can be done on a home computer in non-painful time.<p>
 The project uses an LSTM (Long Short-Term Memory) architecture to process MFCC (Mel Frequency Cepstral Coefficient) features extracted from audio files.
 Recent tests show 100% accuracy on unseen data for 10 second chunks after just 2 training epochs on only five input episodes.
 This projects' functions are set up fairly specific to my needs and include hardcoded values. Use would require manual setting up.<p>
-Some tools for splitting up audio into smaller chunks are provided, and have to be run in the right order.<p>
-Currently no functionality for cutting fiels is provided.
+Some tools for splitting up audio into smaller chunks are provided, and have to be run in the right order.
+Currently no functionality for cutting files is provided.
 
 ### How to Use
 
