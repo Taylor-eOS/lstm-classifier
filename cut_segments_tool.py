@@ -2,7 +2,31 @@ import os
 import re
 import sys
 from pydub import AudioSegment
-from utils import convert_time_to_seconds
+#from utils import convert_time_to_seconds
+
+def convert_time_to_seconds(time_str):
+    parts = time_str.split(':')
+    try:
+        if len(parts) == 3:
+            hours, minutes, seconds = parts
+        elif len(parts) == 2:
+            hours = 0
+            minutes, seconds = parts
+        elif len(parts) == 1:
+            hours = 0
+            minutes = 0
+            seconds = parts[0]
+        else:
+            raise ValueError(f"Invalid time format: {time_str}")
+        total_seconds = (
+            int(hours) * 3600 +
+            int(minutes) * 60 +
+            float(seconds)
+        )
+        return total_seconds
+    except ValueError as ve:
+        print(f"Error parsing time '{time_str}': {ve}")
+        sys.exit(1)
 
 def parse_segments(segments_file_path):
     segments_dict = {}
