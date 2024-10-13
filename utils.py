@@ -48,3 +48,8 @@ class AudioDataset(Dataset):
         label = torch.tensor(label, dtype=torch.long)
         return features, label
 
+def convert_mp3(mp3_path, wav_path):
+    print(f"Converting {mp3_path} to {wav_path}")
+    audio = AudioSegment.from_mp3(mp3_path)
+    audio.export(wav_path, format="wav")
+

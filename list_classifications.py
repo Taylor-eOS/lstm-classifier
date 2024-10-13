@@ -5,6 +5,7 @@ import argparse
 def run_inference(file_path):
     result = subprocess.run(['python', 'main.py', '--mode', 'infer', '--file', file_path], capture_output=True, text=True)
     output = result.stdout.strip()
+    print(f'o: {output}')
     if 'A' in output:
         return 'A'
     elif 'B' in output:
