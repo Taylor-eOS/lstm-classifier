@@ -43,8 +43,7 @@ class AudioDataset(Dataset):
     def __getitem__(self, idx):
         file_path = self.data[idx]
         label = self.labels[idx]
-        features = preprocess_audio(
-            file_path, sampling_rate=self.sampling_rate, n_mfcc=self.n_mfcc, seq_length=self.seq_length)
+        features = preprocess_audio(file_path, sampling_rate=self.sampling_rate, n_mfcc=self.n_mfcc, seq_length=self.seq_length)
         features = torch.tensor(features, dtype=torch.float32)
         label = torch.tensor(label, dtype=torch.long)
         return features, label

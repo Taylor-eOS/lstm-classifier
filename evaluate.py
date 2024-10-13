@@ -11,7 +11,7 @@ def run_inference(file_path):
     elif 'B' in output:
         print('b')
         return 'b'
-    print('none')
+    print('Error: No inference made')
     return None
 
 def evaluate_accuracy(directory):

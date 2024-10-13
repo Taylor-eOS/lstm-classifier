@@ -16,7 +16,8 @@ def split_audio_files(src_folder, dest_folder, chunk_length_ms=10000, min_chunk_
             chunk = audio[i:i + chunk_length_ms]
             if len(chunk) < min_chunk_length_ms:
                 continue  # Skip chunks shorter than the minimum length
-            chunk_name = f"{file_name.split('.')[0]}_chunk_{i // chunk_length_ms}.wav"
+            #chunk_name = f"{file_name.split('.')[0]}_chunk_{i // chunk_length_ms}.wav"
+            chunk_name = f"{file_name.split('.')[0]}_chunk_{i // chunk_length_ms:03}.wav"
             chunk.export(os.path.join(dest_subfolder, chunk_name), format="wav")
 
 src_folders = ['raw/A', 'raw/B']
