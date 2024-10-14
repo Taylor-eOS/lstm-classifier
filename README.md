@@ -13,7 +13,7 @@ Currently no functionality for cutting files is provided.
 
 1. **Training the Model:**
    - Prepare your dataset with two folders named `A` and `B`, where `A` contains `wav` files of one type and `B` of the other.
-   - Use `cut_segments_tool.py` to plit audio files according to the labels in a `segments.txt` file. The [last project](https://github.com/Taylor-eOS/transformer-classifier/tree/main) contains an example of the format used in the files. This would have to be adapted to your input. That project also contains a function to automatically converts mp3 files to wav.
+   - Use `cut_segments_tool.py` to split audio files according to the labels in a `segments.txt` file. The [last project](https://github.com/Taylor-eOS/transformer-classifier/tree/main) contains an example of the format used in the files. This would have to be adapted to your input. That project also contains a function to automatically converts mp3 files to wav.
    - Use `chunk_cutting_tool.py` to segment the input files into small chunks.
    - `split_validation_tool.py` can automatically set aside 10% of your files as a validation set. Move the files into folders `A` and `B` in the `train` and `val` folders.
    - Run the training script:
@@ -23,14 +23,14 @@ Currently no functionality for cutting files is provided.
    - The model will be trained and saved.
 
 2. **Running Inference:**
-   - To classify a single audio file, use the inference mode:
+   - To classify a single audio chunk, use the inference mode:
      ```bash
      python main.py --mode infer --file file.wav
      ```
-   - The output will indicate whether the file is classified as `A` (ads) or `B` (broadcast).
+   - The output will indicate whether the file is classified as `A` or `B`.
 
 3. **Batch Inference for Evaluation:**
-   - To evaluate multiple files at once, place your `.wav` files in the `eval/` directory and run:
+   - To evaluate multiple files at once and get a percentage accuracy value, place your `.wav` files in the `eval/` directory with an `a` or `b` in the file name last after an underscore and run:
      ```bash
      python evaluate.py
      ```
@@ -45,3 +45,4 @@ Currently no functionality for cutting files is provided.
   ```bash
   pip install -r requirements.txt
   ```
+Requirements may not be up to date.
