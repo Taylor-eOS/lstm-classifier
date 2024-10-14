@@ -12,8 +12,8 @@ Some tools for splitting up training data into smaller chunks are provided, and 
 
 1. **Training the Model:**
    - Prepare your dataset with two folders named `A` and `B`, where `A` contains `wav` files of one type and `B` of the other.
-   - My [abandoned project](https://github.com/Taylor-eOS/transformer-classifier/tree/main) contains a tool for manual labeling of training data in the required format.
-   - Use `cut_segments_tool.py` to split audio files according to the labels in a `segments.txt` file. The [last project](https://github.com/Taylor-eOS/transformer-classifier/tree/main) contains an example of the format used in the files. This would have to be adapted to your input. That project also contains a function to automatically converts mp3 files to wav.
+   - My abandoned original  [project](https://github.com/Taylor-eOS/dual-model-classifier) contains a tool for manual labeling of training data in the required format and an example of the format used in the files.
+   - Use `cut_segments_tool.py` to split audio files according to the labels in a `segments.txt` file. This would have to be adapted to your input. That project also contains a function to automatically converts mp3 files to wav.
    - Use `chunk_cutting_tool.py` to segment the input files into small chunks.
    - `split_validation_tool.py` can automatically set aside 10% of your files as a validation set. Move the files into folders `A` and `B` in the `train` and `val` folders.
    - Run the training script:
