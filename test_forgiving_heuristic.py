@@ -1,5 +1,3 @@
-# test_apply_forgiving_heuristic.py
-
 import sys
 
 def read_predictions(file_path):

@@ -1,10 +1,10 @@
 import os
+import math
 import subprocess
 import argparse
-from pydub import AudioSegment
 import tempfile
+from pydub import AudioSegment
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import math
 from utils import convert_mp3
 
 def run_inference(file_path):
@@ -121,7 +121,7 @@ def process_audio(input_file, chunk_length_sec=10):
     else:
         print('\nNo type B segments found after applying heuristic. No output file was created.')
 
-def main():
+def process_file():
     parser = argparse.ArgumentParser(description="Remove type A segments from an audio file.")
     parser.add_argument('--input', type=str, required=True, help='Path to the input file.')
     parser.add_argument('--chunk_length', type=int, default=10, help='Length of each chunk in seconds (default: 10).')
@@ -132,5 +132,5 @@ def main():
     process_audio(args.input, args.chunk_length)
 
 if __name__ == "__main__":
-    main()
+    process_file()
 

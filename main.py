@@ -9,11 +9,11 @@ from utils import AudioDataset, preprocess_audio
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 SAMPLING_RATE = 4000
-N_MFCC = 13
+N_MFCC = 10
 HIDDEN_SIZE = 128
 NUM_LAYERS = 2
 BATCH_SIZE = 32
-EPOCHS = 10
+EPOCHS = 5
 LEARNING_RATE = 0.001
 SEQ_LENGTH = 100
 TRAIN_DIR = 'train'
@@ -71,9 +71,10 @@ def infer(model, file_path):
     with torch.no_grad():
         outputs = model(features)
         preds = outputs.argmax(dim=1)
+        probabilities = torch.softmax(outputs, dim=1)
     classes = ['A', 'B']
     print(f'Prediction: {classes[preds.item()]}')
-    return classes[preds.item()]
+    return classes[preds.item()], probabilities[:, 0]
 
 def main():
     model = AudioClassifier().to(DEVICE)
@@ -84,6 +85,7 @@ def main():
     parser.add_argument('--file', type=str, help='Path to audio file for inference (required for infer mode)')
     args = parser.parse_args()
     if args.mode == 'train':
+        EPOCHS = int(input("Epochs: "))
         train_dataset = AudioDataset(TRAIN_DIR, seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
         val_dataset = AudioDataset(VAL_DIR, seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
         train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -92,7 +94,7 @@ def main():
             print(f'Epoch {epoch+1}/{EPOCHS}')
             train(model, train_loader, criterion, optimizer)
             evaluate(model, val_loader, criterion)
-            print('-' * 20)
+            print('-' * 10)
         torch.save(model.state_dict(), 'sltm_classifier_model.pth')
         print('Model saved')
     elif args.mode == 'infer':
@@ -103,7 +105,8 @@ def main():
             print(f'File "{args.file}" does not exist.')
             return
         model.load_state_dict(torch.load('sltm_classifier_model.pth', map_location=DEVICE))
-        infer(model, args.file)
+        pred_class, prob_A = infer(model, args.file)
+        return pred_class, prob_A
 
 if __name__ == '__main__':
     main()

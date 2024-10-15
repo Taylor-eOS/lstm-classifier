@@ -1,35 +1,46 @@
 import os
-import subprocess
+import re
+import time
 import argparse
+import subprocess
+from concurrent.futures import ThreadPoolExecutor
 
 def run_inference(file_path):
     result = subprocess.run(['python', 'main.py', '--mode', 'infer', '--file', file_path], capture_output=True, text=True)
     output = result.stdout.strip()
     if 'A' in output:
-        print('a')
+        #print('A')
         return 'a'
     elif 'B' in output:
-        print('b')
+        #print('A')
         return 'b'
-    print('Error: No inference made')
-    return None
+    else:
+        print('Error: No inference made')
+        return None
+
+def process_file(file_name, directory):
+    file_path = os.path.join(directory, file_name)
+    true_class = file_name.split('_')[-1][0]
+    predicted_class = run_inference(file_path)
+    file_number = re.search(r'\d+', file_name).group()
+    if predicted_class == true_class:
+        print(f'{file_number} {predicted_class} correct')
+        return True
+    else:
+        print(f'{file_number} {predicted_class} wrong')
+        return False
 
 def evaluate_accuracy(directory):
     total_files = 0
     correct_predictions = 0
-    for file_name in os.listdir(directory):
-        if file_name.endswith('.wav'):
-            print(f'{file_name}')
-            total_files += 1
-            true_class = file_name.split('_')[-1][0]
-            file_path = os.path.join(directory, file_name)
-            predicted_class = run_inference(file_path)
-            if predicted_class == true_class:
-                correct_predictions += 1
-                print('correct')
-            else:
-                print('wrong')
-            print('')
+    files = [file_name for file_name in os.listdir(directory) if file_name.endswith('.wav')]
+    if not files:
+        print("No .wav files found in the directory.")
+        return
+    with ThreadPoolExecutor() as executor:
+        results = executor.map(lambda file_name: process_file(file_name, directory), files)
+    total_files = len(files)
+    correct_predictions = sum(results)
     if total_files > 0:
         accuracy = (correct_predictions / total_files) * 100
         print(f'Accuracy: {accuracy:.2f}% ({correct_predictions}/{total_files} correct predictions)')
@@ -38,5 +49,8 @@ def evaluate_accuracy(directory):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Batch inference script")
+    start_time = time.time()
     evaluate_accuracy('eval/')
+    elapsed_time = time.time() - start_time
+    print(f"Evaluation completed in {elapsed_time:.2f} seconds.")
 
