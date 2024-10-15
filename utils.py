@@ -1,6 +1,7 @@
 import os
 import torch
 from torch.utils.data import Dataset
+from pydub import AudioSegment
 import numpy as np
 import librosa
 
@@ -52,4 +53,9 @@ def convert_mp3(mp3_path, wav_path):
     print(f"Converting {mp3_path} to {wav_path}")
     audio = AudioSegment.from_mp3(mp3_path)
     audio.export(wav_path, format="wav")
+
+def convert_wav(wav_path, mp3_path):
+    print(f"Converting {wav_path} to {mp3_path}")
+    audio = AudioSegment.from_wav(wav_path)
+    audio.export(mp3_path, format="mp3")
 

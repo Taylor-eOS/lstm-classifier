@@ -56,7 +56,7 @@ def apply_forgiving_heuristic(predictions, min_surround_chunks=3, max_flip_lengt
             if len(prev_indices) >= min_surround_chunks and len(next_indices) >= min_surround_chunks:
                 # Flip the label
                 new_label = 'B' if label == 'A' else 'A'
-                print(f"Flipping from {label} to {new_label} (Chunks {indices[0]+1}-{indices[-1]+1})")
+                print(f"Flipping from {label} to {new_label}: Chunks {indices[0]+1}-{indices[-1]+1}")
                 segments[i] = (new_label, indices)
     # Step 3: Reconstruct the corrected predictions list
     corrected_predictions = []
