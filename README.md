@@ -1,6 +1,6 @@
 ## SLTM-Classifier
 
-This is an learning project meant to get familiar with machine learning programming. The script can train a neural net to classify chunks of audio into content types with the help of machine learning. It is a rewrite of [amsterg](https://github.com/amsterg/Podcast-Ad-Detection)'s project, to which the creative credit belongs. The project uses an LSTM (Long Short-Term Memory) architecture to extract and process MFCC features.\
+This is an learning project meant to get familiar with machine learning programming. The script can train a neural net to classify chunks of audio into content types with the help of machine learning. It is a rewrite of [amsterg](https://github.com/amsterg/Podcast-Ad-Detection)'s project (to which I concede the creative credit). The project uses an LSTM (Long Short-Term Memory) architecture to extract and process MFCC features.\
 This version is optimized for home computers. It is less fine-grained and uses lower qualities than the original. Training is fast and can be done in non-painful time.
 My tests show 100% accuracy on unseen data for 10 second chunks after just 2 training epochs on only five input episodes.\
 This is a hobby project. The functions are set up specific to my needs and include inflexible hardcoded values fitted to my particular audio files. Use would require manual setting up and adaptation to your input structure.
