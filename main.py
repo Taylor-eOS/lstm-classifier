@@ -1,4 +1,5 @@
 import os
+import glob
 import argparse
 import torch
 import torch.nn as nn
@@ -12,10 +13,10 @@ SAMPLING_RATE = 4000
 N_MFCC = 10
 HIDDEN_SIZE = 128
 NUM_LAYERS = 2
-BATCH_SIZE = 32
-EPOCHS = 5
-LEARNING_RATE = 0.001
 SEQ_LENGTH = 100
+EPOCHS = 5
+BATCH_SIZE = 32
+LEARNING_RATE = 0.001
 TRAIN_DIR = 'train'
 VAL_DIR = 'val'
 
@@ -46,6 +47,19 @@ def train(model, train_loader, criterion, optimizer):
     avg_loss = total_loss / len(train_loader)
     print(f'Training Loss: {avg_loss:.4f}')
 
+def infer(model, file_path):
+    model.eval()
+    features = preprocess_audio(
+        file_path, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC, seq_length=SEQ_LENGTH)
+    features = torch.tensor(features, dtype=torch.float32).unsqueeze(0).to(DEVICE)
+    with torch.no_grad():
+        outputs = model(features)
+        preds = outputs.argmax(dim=1)
+        probabilities = torch.softmax(outputs, dim=1)
+    classes = ['A', 'B']
+    print(f'Prediction: {classes[preds.item()]}')
+    return classes[preds.item()], probabilities[:, 0]
+
 def evaluate(model, val_loader, criterion):
     model.eval()
     total_loss = 0
@@ -63,28 +77,11 @@ def evaluate(model, val_loader, criterion):
     accuracy = correct / len(val_loader.dataset)
     print(f'Validation Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}')
 
-def infer(model, file_path):
-    model.eval()
-    features = preprocess_audio(
-        file_path, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC, seq_length=SEQ_LENGTH)
-    features = torch.tensor(features, dtype=torch.float32).unsqueeze(0).to(DEVICE)
-    with torch.no_grad():
-        outputs = model(features)
-        preds = outputs.argmax(dim=1)
-        probabilities = torch.softmax(outputs, dim=1)
-    classes = ['A', 'B']
-    print(f'Prediction: {classes[preds.item()]}')
-    return classes[preds.item()], probabilities[:, 0]
-
-def main():
+def main(mode, file=None):
     model = AudioClassifier().to(DEVICE)
     criterion = nn.NLLLoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-    parser = argparse.ArgumentParser(description='Audio Classification Script')
-    parser.add_argument('--mode', type=str, required=True, choices=['train', 'infer'], help='Mode: train or infer')
-    parser.add_argument('--file', type=str, help='Path to audio file for inference (required for infer mode)')
-    args = parser.parse_args()
-    if args.mode == 'train':
+    if mode == 'train':
         EPOCHS = int(input("Epochs: "))
         train_dataset = AudioDataset(TRAIN_DIR, seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
         val_dataset = AudioDataset(VAL_DIR, seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
@@ -95,19 +92,31 @@ def main():
             train(model, train_loader, criterion, optimizer)
             evaluate(model, val_loader, criterion)
             print('-' * 10)
-        torch.save(model.state_dict(), 'sltm_classifier_model.pth')
+        filename = f'lstm_model_{SAMPLING_RATE}_{N_MFCC}_{HIDDEN_SIZE}_{NUM_LAYERS}_{SEQ_LENGTH}_{EPOCHS}.pth'
+        torch.save(model.state_dict(), filename)
+        print('Model saved as', filename)
         print('Model saved')
-    elif args.mode == 'infer':
-        if args.file is None:
-            print('Please provide a file path with --file for inference mode.')
+    elif mode == 'infer':
+        if file is None:
+            raise ValueError("File path is required for inference mode.")
+        if not os.path.exists(file):
+            print(f'File "{file}" does not exist.')
             return
-        if not os.path.exists(args.file):
-            print(f'File "{args.file}" does not exist.')
-            return
-        model.load_state_dict(torch.load('sltm_classifier_model.pth', map_location=DEVICE))
-        pred_class, prob_A = infer(model, args.file)
+        expected_filename = f'lstm_model_{SAMPLING_RATE}_{N_MFCC}_{HIDDEN_SIZE}_{NUM_LAYERS}_{SEQ_LENGTH}_*.pth'
+        matching_files = glob.glob(expected_filename)
+        if not matching_files:
+            raise ValueError("No matching model file found for the current architecture parameters.")
+        filename = matching_files[0]
+        checkpoint = torch.load(filename, map_location=DEVICE)
+        print(f'Loaded model from {filename}')
+        model.load_state_dict(checkpoint)
+        pred_class, prob_A = infer(model, file)
         return pred_class, prob_A
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='Audio Classification Script')
+    parser.add_argument('--mode', type=str, required=True, choices=['train', 'infer'], help='Mode: train or infer')
+    parser.add_argument('--file', type=str, help='Path to audio file for inference (required for infer mode)')
+    args = parser.parse_args()
+    main(args.mode, args.file)
 
