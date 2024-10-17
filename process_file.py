@@ -121,15 +121,12 @@ def process_audio(input_file, chunk_length_sec=10):
     else:
         print('\nNo type B segments found after applying heuristic. No output file was created.')
 
-def process_file():
-    parser = argparse.ArgumentParser(description="Remove type A segments from an audio file.")
-    parser.add_argument('--input', type=str, required=True, help='Path to the input file.')
-    parser.add_argument('--chunk_length', type=int, default=10, help='Length of each chunk in seconds (default: 10).')
-    args = parser.parse_args()
-    if not os.path.isfile(args.input):
-        print(f'Input file {args.input} does not exist.')
+def process_file(wav_path):
+    parser = argparse.ArgumentParser(description="Remove type A segments")
+    if not os.path.isfile(wav_path):
+        print(f'Input file given to process_file(wav_path) does not exist.')
         return
-    process_audio(args.input, args.chunk_length)
+    process_audio(wav_path)
 
 if __name__ == "__main__":
     process_file()
