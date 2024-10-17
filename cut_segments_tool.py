@@ -2,43 +2,23 @@ import os
 import re
 import sys
 from pydub import AudioSegment
-#from utils import convert_time_to_seconds
+from utils import convert_time_to_seconds
 
-def convert_time_to_seconds(time_str):
-    parts = time_str.split(':')
-    try:
-        if len(parts) == 3:
-            hours, minutes, seconds = parts
-        elif len(parts) == 2:
-            hours = 0
-            minutes, seconds = parts
-        elif len(parts) == 1:
-            hours = 0
-            minutes = 0
-            seconds = parts[0]
-        else:
-            raise ValueError(f"Invalid time format: {time_str}")
-        total_seconds = (
-            int(hours) * 3600 +
-            int(minutes) * 60 +
-            float(seconds)
-        )
-        return total_seconds
-    except ValueError as ve:
-        print(f"Error parsing time '{time_str}': {ve}")
-        sys.exit(1)
+#This file splits the input files into the segments marked in the segmetns file.
+#Set the lines per file variable to match your file format.
 
 def parse_segments(segments_file_path):
+    total_lines_per_file = 6
     segments_dict = {}
     with open(segments_file_path, 'r') as f:
         lines = f.readlines()
-        for i in range(0, len(lines), 6):
+        for i in range(0, len(lines), total_lines_per_file):
             header = lines[i].strip()
             filename_match = re.match(r'\[(.*?)\]', header)
             if filename_match:
                 filename = filename_match.group(1)
                 timestamps = []
-                for j in range(1, 6):
+                for j in range(1, total_lines_per_file):
                     if i + j >= len(lines):
                         print(f"Unexpected end of file while parsing {filename}.")
                         sys.exit(1)

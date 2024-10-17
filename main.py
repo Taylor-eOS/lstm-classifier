@@ -107,7 +107,7 @@ def main(mode, file=None):
         if not matching_files:
             raise ValueError("No matching model file found for the current architecture parameters.")
         filename = matching_files[0]
-        checkpoint = torch.load(filename, map_location=DEVICE)
+        checkpoint = torch.load(filename, map_location=DEVICE, weights_only=True)
         print(f'Loaded model from {filename}')
         model.load_state_dict(checkpoint)
         pred_class, prob_A = infer(model, file)

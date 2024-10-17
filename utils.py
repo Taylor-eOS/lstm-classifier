@@ -59,3 +59,27 @@ def convert_wav(wav_path, mp3_path):
     audio = AudioSegment.from_wav(wav_path)
     audio.export(mp3_path, format="mp3")
 
+def convert_time_to_seconds(time_str):
+    parts = time_str.split(':')
+    try:
+        if len(parts) == 3:
+            hours, minutes, seconds = parts
+        elif len(parts) == 2:
+            hours = 0
+            minutes, seconds = parts
+        elif len(parts) == 1:
+            hours = 0
+            minutes = 0
+            seconds = parts[0]
+        else:
+            raise ValueError(f"Invalid time format: {time_str}")
+        total_seconds = (
+            int(hours) * 3600 +
+            int(minutes) * 60 +
+            float(seconds)
+        )
+        return total_seconds
+    except ValueError as ve:
+        print(f"Error parsing time '{time_str}': {ve}")
+        sys.exit(1)
+
