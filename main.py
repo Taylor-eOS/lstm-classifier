@@ -14,9 +14,9 @@ N_MFCC = 10
 HIDDEN_SIZE = 128
 NUM_LAYERS = 2
 SEQ_LENGTH = 100
-EPOCHS = 5
+EPOCHS = 5 #default, you will be prompted
 BATCH_SIZE = 32
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.0005
 TRAIN_DIR = 'train'
 VAL_DIR = 'val'
 
@@ -49,16 +49,16 @@ def train(model, train_loader, criterion, optimizer):
 
 def infer(model, file_path):
     model.eval()
-    features = preprocess_audio(
-        file_path, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC, seq_length=SEQ_LENGTH)
+    features = preprocess_audio(file_path, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC, seq_length=SEQ_LENGTH)
     features = torch.tensor(features, dtype=torch.float32).unsqueeze(0).to(DEVICE)
     with torch.no_grad():
         outputs = model(features)
         preds = outputs.argmax(dim=1)
         probabilities = torch.softmax(outputs, dim=1)
     classes = ['A', 'B']
-    print(f'Prediction: {classes[preds.item()]}')
-    return classes[preds.item()], probabilities[:, 0]
+    pred = classes[preds.item()]
+    print(f'Prediction: {pred}')
+    return pred, probabilities[:, 1].item()
 
 def evaluate(model, val_loader, criterion):
     model.eval()
@@ -110,8 +110,9 @@ def main(mode, file=None):
         checkpoint = torch.load(filename, map_location=DEVICE, weights_only=True)
         print(f'Loaded model from {filename}')
         model.load_state_dict(checkpoint)
-        pred_class, prob_A = infer(model, file)
-        return pred_class, prob_A
+        pred_class, prob_B = infer(model, file)
+        print(f'{prob_B}')
+        return pred_class, prob_B
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Audio Classification Script')

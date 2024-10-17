@@ -51,7 +51,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Batch inference script")
     start_time = time.time()
     eval_folder = input("Evaluate files in folder: ")
-    evaluate_accuracy(eval_folder + "/")
+    evaluate_accuracy("eval/" + eval_folder + "/")
     elapsed_time = time.time() - start_time
     print(f"Evaluation completed in {elapsed_time:.2f} seconds.")
 
