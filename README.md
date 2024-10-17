@@ -45,9 +45,3 @@ Dependencies can be installed via:
   ```bash
   pip install -r requirements.txt
   ```
-
-Feature wishlist:<p>
-- Optimization
-- Directly feed MFCC data instead of cutting audio files
-- Distilling a transformer from the LSTM
-- Synthesizing ground data
