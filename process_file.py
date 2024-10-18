@@ -1,7 +1,8 @@
 import os
+import time
 import math
-import subprocess
 import argparse
+import subprocess
 import tempfile
 from pydub import AudioSegment
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -66,14 +67,25 @@ def apply_forgiving_heuristic(predictions, min_surround_chunks=3, max_flip_lengt
     return corrected_predictions
 
 def reconstruct_audio(corrected_predictions, chunks, desired_label='B'):
-    selected_chunks = [chunks[i] for i in range(len(chunks)) if corrected_predictions[i] == desired_label]
-    if selected_chunks:
-        combined_audio = selected_chunks[0]
-        for chunk in selected_chunks[1:]:
-            combined_audio += chunk
-        return combined_audio
-    else:
-        return None
+    episode_number = time.strftime("%d-%H%M")
+    def get_dir(folder):
+        return os.path.join('export', episode_number, folder)
+    type_dirs = {'A': get_dir('A'), 'B': get_dir('B')}
+    for dir_path in type_dirs.values():
+        os.makedirs(dir_path, exist_ok=True)
+    combined_audio = None
+    for i, chunk in enumerate(chunks):
+        label = corrected_predictions[i]
+        if label == desired_label:
+            if combined_audio is None:
+                combined_audio = chunk
+            else:
+                combined_audio += chunk
+        if label in type_dirs:
+            chunk_filename = f"chunk_{i}_{label}.wav"
+            chunk_path = os.path.join(type_dirs[label], chunk_filename)
+            chunk.export(chunk_path, format="wav")
+    return combined_audio
 
 #Processes the input audio file by removing segments classified as type A and combining the remaining type B segments into a new audio file.
 def process_audio(input_file, chunk_length_sec=10):
@@ -119,15 +131,17 @@ def process_audio(input_file, chunk_length_sec=10):
         except Exception as e:
             print(f'Error saving combined audio: {e}')
     else:
-        print('\nNo type B segments found after applying heuristic. No output file was created.')
+        print('\nNo type B segments found after applying heuristic.')
 
 def process_file(wav_path):
-    parser = argparse.ArgumentParser(description="Remove type A segments")
     if not os.path.isfile(wav_path):
-        print(f'Input file given to process_file(wav_path) does not exist.')
+        print(f'Input file {wav_path} given to process_file does not exist.')
         return
-    process_audio(wav_path)
+    process_audio(wav_path) #should convert if mp3
 
 if __name__ == "__main__":
-    process_file()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--file', required=True, help='Input file path')
+    args = parser.parse_args()
+    process_file(args.file)
 
