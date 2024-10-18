@@ -1,11 +1,12 @@
 import os
-import glob
+import shutil
 import argparse
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
 from torch.utils.data import DataLoader
+import numpy as np
+import glob
 from utils import AudioDataset, preprocess_audio
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -14,10 +15,10 @@ N_MFCC = 10
 HIDDEN_SIZE = 128
 NUM_LAYERS = 2
 SEQ_LENGTH = 100
-MAX_EPOCHS = 5 #default, you will be prompted
+MAX_EPOCHS = 10 #default, you will be prompted
 BATCH_SIZE = 32
-LEARNING_RATE = 0.0005
-ACCURACY_THRESHOLD = 0.99
+LEARNING_RATE = 0.00015
+ACCURACY_THRESHOLD = 0.995
 TRAIN_DIR = 'train'
 VAL_DIR = 'val'
 
@@ -85,11 +86,10 @@ def main(mode, file=None):
     criterion = nn.NLLLoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     last_loss = None
-    def get_filename(stop_epoch):
-        return f'model_{SAMPLING_RATE}_{N_MFCC}_{HIDDEN_SIZE}_{NUM_LAYERS}_{SEQ_LENGTH}_{stop_epoch}.pth'
+    def get_filename(epoch):
+        return f'model_{SAMPLING_RATE}_{N_MFCC}_{HIDDEN_SIZE}_{NUM_LAYERS}_{SEQ_LENGTH}_{epoch}.pth'
     if mode == 'train':
-        MAX_EPOCHS = int(input("Epochs: "))
-        stop_epoch = str(MAX_EPOCHS)
+        MAX_EPOCHS = int(input("Max. epochs: "))
         train_dataset = AudioDataset(TRAIN_DIR, seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
         val_dataset = AudioDataset(VAL_DIR, seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
         train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
@@ -98,20 +98,19 @@ def main(mode, file=None):
             print(f'Epoch {epoch+1}/{MAX_EPOCHS}')
             train(model, train_loader, criterion, optimizer)
             loss, accuracy = evaluate(model, val_loader, criterion)
-            if last_loss is None:
-                print(f"Validation loss delta: higher values are better")
-            else:
+            if not last_loss is None:
                 delta = loss - last_loss
-                print(f"Validation loss delta: {delta * -100:.2f}%")
+                print(f"Delta: {delta * -100:.2f}%")
             last_loss = loss
+            filename = get_filename(str(epoch+1))
+            if accuracy > 0.7:
+                torch.save(model.state_dict(), filename)
+            if os.path.exists(filename):
+                print('Model saved as', filename)
             if accuracy > ACCURACY_THRESHOLD:
                 print(f"{accuracy:.2f}% accuracy is good enough. Stopping early at epoch {epoch}.")
-                stop_epoch = str(epoch)
                 break
-        filename = get_filename(stop_epoch)
-        torch.save(model.state_dict(), filename)
-        if os.path.exists(filename):
-            print('Model saved as', filename)
+            print('-' * 3)
     elif mode == 'infer':
         if file is None:
             raise ValueError("File path is required for inference mode.")
