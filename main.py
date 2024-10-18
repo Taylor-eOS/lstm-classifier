@@ -9,14 +9,15 @@ from torch.utils.data import DataLoader
 from utils import AudioDataset, preprocess_audio
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-SAMPLING_RATE = 2000
-N_MFCC = 5
-HIDDEN_SIZE = 64
+SAMPLING_RATE = 4000
+N_MFCC = 10
+HIDDEN_SIZE = 128
 NUM_LAYERS = 2
-SEQ_LENGTH = 200
-EPOCHS = 5 #default, you will be prompted
-BATCH_SIZE = 16
-LEARNING_RATE = 0.0001
+SEQ_LENGTH = 100
+MAX_EPOCHS = 5 #default, you will be prompted
+BATCH_SIZE = 32
+LEARNING_RATE = 0.0005
+ACCURACY_THRESHOLD = 0.99
 TRAIN_DIR = 'train'
 VAL_DIR = 'val'
 
@@ -75,41 +76,49 @@ def evaluate(model, val_loader, criterion):
             correct += (preds == labels).sum().item()
     avg_loss = total_loss / len(val_loader)
     accuracy = correct / len(val_loader.dataset)
-    print(f'Validation Loss: {avg_loss:.4f}')
     print(f'Accuracy: {accuracy:.4f}')
-    return avg_loss
+    print(f'Validation Loss: {avg_loss:.4f}')
+    return avg_loss, accuracy
 
 def main(mode, file=None):
     model = AudioClassifier().to(DEVICE)
     criterion = nn.NLLLoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     last_loss = None
+    def get_filename(stop_epoch):
+        return f'model_{SAMPLING_RATE}_{N_MFCC}_{HIDDEN_SIZE}_{NUM_LAYERS}_{SEQ_LENGTH}_{stop_epoch}.pth'
     if mode == 'train':
-        EPOCHS = int(input("Epochs: "))
+        MAX_EPOCHS = int(input("Epochs: "))
+        stop_epoch = str(MAX_EPOCHS)
         train_dataset = AudioDataset(TRAIN_DIR, seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
         val_dataset = AudioDataset(VAL_DIR, seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
         train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
         val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
-        for epoch in range(EPOCHS):
-            print(f'Epoch {epoch+1}/{EPOCHS}')
+        for epoch in range(MAX_EPOCHS):
+            print(f'Epoch {epoch+1}/{MAX_EPOCHS}')
             train(model, train_loader, criterion, optimizer)
-            loss = evaluate(model, val_loader, criterion)
-            if last_loss is not None:
+            loss, accuracy = evaluate(model, val_loader, criterion)
+            if last_loss is None:
+                print(f"Validation loss delta: higher values are better")
+            else:
                 delta = loss - last_loss
-                print(f"Validation Loss delta: {delta * -100:.2f}%")
+                print(f"Validation loss delta: {delta * -100:.2f}%")
             last_loss = loss
-            print('-' * 3)
-        filename = f'lstm_model_{SAMPLING_RATE}_{N_MFCC}_{HIDDEN_SIZE}_{NUM_LAYERS}_{SEQ_LENGTH}_{EPOCHS}.pth'
+            if accuracy > ACCURACY_THRESHOLD:
+                print(f"{accuracy:.2f}% accuracy is good enough. Stopping early at epoch {epoch}.")
+                stop_epoch = str(epoch)
+                break
+        filename = get_filename(stop_epoch)
         torch.save(model.state_dict(), filename)
-        print('Model saved as', filename)
-        print('Model saved')
+        if os.path.exists(filename):
+            print('Model saved as', filename)
     elif mode == 'infer':
         if file is None:
             raise ValueError("File path is required for inference mode.")
         if not os.path.exists(file):
             print(f'File "{file}" does not exist.')
             return
-        expected_filename = f'lstm_model_{SAMPLING_RATE}_{N_MFCC}_{HIDDEN_SIZE}_{NUM_LAYERS}_{SEQ_LENGTH}_*.pth'
+        expected_filename = get_filename('*')
         matching_files = glob.glob(expected_filename)
         if not matching_files:
             raise ValueError("No matching model file found for the current architecture parameters.")
