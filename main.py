@@ -9,14 +9,14 @@ from torch.utils.data import DataLoader
 from utils import AudioDataset, preprocess_audio
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-SAMPLING_RATE = 4000
-N_MFCC = 10
-HIDDEN_SIZE = 128
+SAMPLING_RATE = 2000
+N_MFCC = 5
+HIDDEN_SIZE = 64
 NUM_LAYERS = 2
-SEQ_LENGTH = 100
+SEQ_LENGTH = 200
 EPOCHS = 5 #default, you will be prompted
-BATCH_SIZE = 32
-LEARNING_RATE = 0.0005
+BATCH_SIZE = 16
+LEARNING_RATE = 0.0001
 TRAIN_DIR = 'train'
 VAL_DIR = 'val'
 
@@ -75,12 +75,15 @@ def evaluate(model, val_loader, criterion):
             correct += (preds == labels).sum().item()
     avg_loss = total_loss / len(val_loader)
     accuracy = correct / len(val_loader.dataset)
-    print(f'Validation Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}')
+    print(f'Validation Loss: {avg_loss:.4f}')
+    print(f'Accuracy: {accuracy:.4f}')
+    return avg_loss
 
 def main(mode, file=None):
     model = AudioClassifier().to(DEVICE)
     criterion = nn.NLLLoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    last_loss = None
     if mode == 'train':
         EPOCHS = int(input("Epochs: "))
         train_dataset = AudioDataset(TRAIN_DIR, seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
@@ -90,8 +93,12 @@ def main(mode, file=None):
         for epoch in range(EPOCHS):
             print(f'Epoch {epoch+1}/{EPOCHS}')
             train(model, train_loader, criterion, optimizer)
-            evaluate(model, val_loader, criterion)
-            print('-' * 10)
+            loss = evaluate(model, val_loader, criterion)
+            if last_loss is not None:
+                delta = loss - last_loss
+                print(f"Validation Loss delta: {delta * -100:.2f}%")
+            last_loss = loss
+            print('-' * 3)
         filename = f'lstm_model_{SAMPLING_RATE}_{N_MFCC}_{HIDDEN_SIZE}_{NUM_LAYERS}_{SEQ_LENGTH}_{EPOCHS}.pth'
         torch.save(model.state_dict(), filename)
         print('Model saved as', filename)
