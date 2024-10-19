@@ -10,7 +10,7 @@ This project is an excellent simple example of neural net technology in use, tha
 1. **Training the Model:**
    - Place your unsegmented training data in the folder `input` along with a `segments.txt` file that contains the timestamps between segments.
    - My other [project](https://github.com/Taylor-eOS/dual-model-classifier) contains a tool for manually labeling training data in the required format, which will be read by the algorithm in order to create training segments.
-   - Use `cut_segments_tool.py` to split your files according to the labels in the file. This cutting would have to be adapted to your files, as it expects a set amount of alternating segments.
+   - Use `cut_segments_tool.py` to split your files according to the labels in the file. This cutting would have to be adapted to your files, as it expects a format.
    - Use `separate_chunks_tool.py` to segment the input files into small chunks for training. It will randomly set aside 10% of your files as a validation set and move the files into the right folders.
    - Run the training script:
      ```bash
