@@ -19,6 +19,7 @@ MAX_EPOCHS = 10 #default, you will be prompted
 BATCH_SIZE = 32
 LEARNING_RATE = 0.0001
 ACCURACY_THRESHOLD = 0.995
+MIN_ACCURACY = 0.8
 TRAIN_DIR = 'train'
 VAL_DIR = 'val'
 
@@ -54,13 +55,10 @@ def infer(model, file_path):
     features = preprocess_audio(file_path, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC, seq_length=SEQ_LENGTH)
     features = torch.tensor(features, dtype=torch.float32).unsqueeze(0).to(DEVICE)
     with torch.no_grad():
-        outputs = model(features)
-        preds = outputs.argmax(dim=1)
-        probabilities = torch.softmax(outputs, dim=1)
-    classes = ['A', 'B']
-    pred = classes[preds.item()]
-    print(f'Prediction: {pred}')
-    return pred, probabilities[:, 1].item()
+        logits = model(features)
+        preds = logits.argmax(dim=1)
+        probabilities = torch.softmax(logits, dim=1)
+    return logits, preds, probabilities
 
 def evaluate(model, val_loader, criterion):
     model.eval()
@@ -105,10 +103,10 @@ def main(mode, file=None):
                 print(f"Delta: {delta * -100:.2f}%")
             last_loss = loss
             filename = get_filename(str(epoch+1))
-            if accuracy > 0.7:
+            if accuracy > MIN_ACCURACY:
                 torch.save(model.state_dict(), filename)
-            if os.path.exists(filename):
-                print('Model saved as', filename)
+                if os.path.exists(filename):
+                    print('Model saved as', filename)
             if accuracy > ACCURACY_THRESHOLD:
                 print(f"{accuracy} accuracy is good enough. Stopping early at epoch {epoch}.")
                 break
@@ -127,9 +125,12 @@ def main(mode, file=None):
         checkpoint = torch.load(filename, map_location=DEVICE, weights_only=True)
         print(f'Loaded model from {filename}')
         model.load_state_dict(checkpoint)
-        pred_class, prob_B = infer(model, file)
-        print(f'{prob_B}')
-        return pred_class, prob_B
+        logits, preds, probabilities = infer(model, file)
+        classes = ['A', 'B']
+        pred_class = classes[preds.item()]
+        prob_B = probabilities[:, 1].item()
+        print(f'Prediction: {pred_class} {prob_B}')
+        return pred_class, prob_B, logits
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Audio Classification Script')
