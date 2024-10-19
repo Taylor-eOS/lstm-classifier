@@ -17,7 +17,7 @@ NUM_LAYERS = 2
 SEQ_LENGTH = 100
 MAX_EPOCHS = 10 #default, you will be prompted
 BATCH_SIZE = 32
-LEARNING_RATE = 0.00015
+LEARNING_RATE = 0.0001
 ACCURACY_THRESHOLD = 0.995
 TRAIN_DIR = 'train'
 VAL_DIR = 'val'
@@ -98,7 +98,9 @@ def main(mode, file=None):
             print(f'Epoch {epoch+1}/{MAX_EPOCHS}')
             train(model, train_loader, criterion, optimizer)
             loss, accuracy = evaluate(model, val_loader, criterion)
-            if not last_loss is None:
+            if last_loss is None:
+                print(f"Delta: higher is better")
+            else:
                 delta = loss - last_loss
                 print(f"Delta: {delta * -100:.2f}%")
             last_loss = loss
@@ -108,7 +110,7 @@ def main(mode, file=None):
             if os.path.exists(filename):
                 print('Model saved as', filename)
             if accuracy > ACCURACY_THRESHOLD:
-                print(f"{accuracy:.2f}% accuracy is good enough. Stopping early at epoch {epoch}.")
+                print(f"{accuracy} accuracy is good enough. Stopping early at epoch {epoch}.")
                 break
             print('-' * 3)
     elif mode == 'infer':

@@ -41,10 +41,8 @@ def move_files(src_folder, dst_folder):
     for file_name in os.listdir(src_folder):
         shutil.move(src_file, os.path.join(dst_folder, file_name))
 
-src_folders = ['raw/A', 'raw/B']
-dest_base = 'raw/cut'
-for folder in src_folders:
-    dest_folder = os.path.join(dest_base, os.path.basename(folder))
+for folder in ['raw/A', 'raw/B']:
+    dest_folder = os.path.join('raw/cut', os.path.basename(folder))
     split_audio_files(folder, dest_folder)
 move_random_files('raw/cut/A', 'val/A')
 move_random_files('raw/cut/B', 'val/B')

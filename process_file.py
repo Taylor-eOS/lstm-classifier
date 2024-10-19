@@ -66,25 +66,37 @@ def apply_forgiving_heuristic(predictions, min_surround_chunks=3, max_flip_lengt
             corrected_predictions.append(label)
     return corrected_predictions
 
-def reconstruct_audio(corrected_predictions, chunks, desired_label='B'):
-    episode_number = time.strftime("%d-%H%M")
-    def get_dir(folder):
-        return os.path.join('export', episode_number, folder)
-    type_dirs = {'A': get_dir('A'), 'B': get_dir('B')}
-    for dir_path in type_dirs.values():
-        os.makedirs(dir_path, exist_ok=True)
+def reconstruct_audio(predictions, chunks, input_file=None, desired_label='B'):
+    total_time = 0
+    A_segments = []
+    in_A_segment = False
+    segment_start = 0
     combined_audio = None
-    for i, chunk in enumerate(chunks):
-        label = corrected_predictions[i]
-        if label == desired_label:
-            if combined_audio is None:
-                combined_audio = chunk
+    episode_number = time.strftime("%d-%H%M")
+    base_filename = os.path.splitext(os.path.basename(input_file))[0] if input_file else 'unknown'
+    txt_file_path = f'timestamps_{base_filename}.txt'
+    with open(txt_file_path, 'w') as f:
+        f.write(f'[{base_filename}]\n')
+        for i, chunk in enumerate(chunks):
+            label = predictions[i]
+            duration = len(chunk)
+            if label == 'A':
+                if not in_A_segment:
+                    in_A_segment = True
+                    segment_start = total_time
             else:
-                combined_audio += chunk
-        if label in type_dirs:
-            chunk_filename = f"chunk_{i}_{label}.wav"
-            chunk_path = os.path.join(type_dirs[label], chunk_filename)
-            chunk.export(chunk_path, format="wav")
+                if in_A_segment:
+                    in_A_segment = False
+                    A_segments.append((segment_start, total_time))
+            if label == desired_label:
+                combined_audio = chunk if combined_audio is None else combined_audio + chunk
+            total_time += duration
+        if in_A_segment:
+            A_segments.append((segment_start, total_time))
+        for start_ms, end_ms in A_segments:
+            start_min, start_sec = divmod(start_ms // 1000, 60)
+            end_min, end_sec = divmod(end_ms // 1000, 60)
+            f.write(f'{int(start_min)}:{int(start_sec):02d}-{int(end_min)}:{int(end_sec):02d}\n')
     return combined_audio
 
 #Processes the input audio file by removing segments classified as type A and combining the remaining type B segments into a new audio file.
@@ -100,10 +112,10 @@ def process_audio(input_file, chunk_length_sec=10):
     num_chunks = int(num_chunks)
     filename, file_extension = os.path.splitext(input_file)
     output_file = f'{filename}_cut{file_extension}'
-    print(f'\nProcessing Audio File: {input_file}')
-    print(f'Total Length: {total_length_ms / 1000:.2f} seconds')
-    print(f'Chunk Length: {chunk_length_sec} seconds')
-    print(f'Number of Full Chunks: {num_chunks}\n')
+    print(f'\nProcessing audio file: {input_file}')
+    print(f'Total length: {total_length_ms / 1000:.2f} seconds')
+    print(f'Chunk length: {chunk_length_sec} seconds')
+    print(f'Number of full chunks: {num_chunks}\n')
     chunks = []
     for i in range(num_chunks):
         start_ms = i * chunk_length_ms
@@ -123,7 +135,7 @@ def process_audio(input_file, chunk_length_sec=10):
     #Apply the forgiving heuristic
     corrected_predictions = apply_forgiving_heuristic(predictions)
     #Reconstruct the final audio
-    combined_audio = reconstruct_audio(corrected_predictions, chunks, desired_label='B')
+    combined_audio = reconstruct_audio(corrected_predictions, chunks, input_file)
     if combined_audio:
         try:
             combined_audio.export(output_file, format='wav')
@@ -137,6 +149,8 @@ def process_file(wav_path):
     if not os.path.isfile(wav_path):
         print(f'Input file {wav_path} given to process_file does not exist.')
         return
+    #if os.path.getsize(wav_path) > warn if too big
+    print('The script is currently only equipped to handle files <1h')
     process_audio(wav_path) #should convert if mp3
 
 if __name__ == "__main__":

@@ -25,7 +25,7 @@ def create_new_files(file1, file2, folder, output_folder):
     new_file2 = f"swap_{base2}_{base1}{ext2}"
     new_audio1.export(os.path.join(output_folder, new_file1), format=ext1.replace('.', ''))
     new_audio2.export(os.path.join(output_folder, new_file2), format=ext2.replace('.', ''))
-    print(f"Created: {new_file1} and {new_file2}")
+    #print(f"Created: {new_file1} and {new_file2}")
 
 def main():
     folder = input("Enter the relative folder name (e.g., 'train/A'): ").strip()
@@ -56,7 +56,7 @@ def main():
         if pair not in paired:
             create_new_files(last_file, other_file, folder, output_folder)
             paired.add(pair)
-    print(f"All new files have been created in the '{output_folder}' folder.")
+    print(f"A lot of new files have been created in {output_folder}")
 
 if __name__ == "__main__":
     main()

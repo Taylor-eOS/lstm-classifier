@@ -3,3 +3,4 @@ torchvision
 librosa
 numpy
 pydub
+pygame
