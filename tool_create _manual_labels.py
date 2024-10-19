@@ -249,20 +249,18 @@ class LabelLogic:
         times = []
         for seg in merged_segments:
             times.extend([int(seg['start']), int(seg['end'])])
-        
-        # Second processing step: omit the first and last timestamps
+        #Second processing step: omit the first and last timestamps
         if len(times) > 2:
             times_to_write = times[1:-1]
         else:
             times_to_write = []
-        
         try:
             with open("segments.txt", "w") as f:
                 file_basename = os.path.splitext(self.audio_file)[0]
                 f.write(f"[{file_basename}]\n")
                 f.write(" ".join(map(str, times_to_write)) + "\n")
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to write A segments: {e}")
+            messagebox.showerror("Error", f"Failed to write segments: {e}")
 
 def main():
     basename = input("Audio file name: ")

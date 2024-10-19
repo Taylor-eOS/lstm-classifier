@@ -9,10 +9,8 @@ def run_inference(file_path):
     result = subprocess.run(['python', 'main.py', '--mode', 'infer', '--file', file_path], capture_output=True, text=True)
     output = result.stdout.strip()
     if 'A' in output:
-        #print('A')
         return 'a'
     elif 'B' in output:
-        #print('A')
         return 'b'
     else:
         print('Error: No inference made')
@@ -24,7 +22,7 @@ def process_file(file_name, directory):
     predicted_class = run_inference(file_path)
     file_number = re.search(r'\d+', file_name).group()
     if predicted_class == true_class:
-        print(f'{file_number} {predicted_class} correct')
+        print(f'{file_number:2} {predicted_class} correct')
         return True
     else:
         print(f'{file_number} {predicted_class} wrong')
