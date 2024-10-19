@@ -123,13 +123,13 @@ def main(mode, file=None):
             raise ValueError("No matching model file found for the current architecture parameters.")
         filename = matching_files[0]
         checkpoint = torch.load(filename, map_location=DEVICE, weights_only=True)
-        #print(f'Loaded model from {filename}')
+        print(f'Loaded model from {filename}')
         model.load_state_dict(checkpoint)
         logits, preds, probabilities = infer(model, file)
         classes = ['A', 'B']
         pred_class = classes[preds.item()]
         prob_B = probabilities[:, 1].item()
-        #print(f'Prediction: {pred_class} {prob_B}')
+        print(f'Prediction: {pred_class} {prob_B}')
         return pred_class, prob_B, logits
 
 if __name__ == '__main__':

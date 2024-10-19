@@ -6,6 +6,17 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor
 
 def run_inference(file_path):
+    result = subprocess.run(['python', 'distill_transformer.py', '--mode', 'infer', '--file', file_path], capture_output=True, text=True)
+    output = result.stdout.strip()
+    if 'A' in output:
+        return 'a'
+    elif 'B' in output:
+        return 'b'
+    else:
+        print('Error: No inference made')
+        return None
+
+def run_inference_transformer(file_path):
     result = subprocess.run(['python', 'main.py', '--mode', 'infer', '--file', file_path], capture_output=True, text=True)
     output = result.stdout.strip()
     if 'A' in output:
@@ -16,10 +27,13 @@ def run_inference(file_path):
         print('Error: No inference made')
         return None
 
-def process_file(file_name, directory):
+def process_file(file_name, directory, use_transformer):
     file_path = os.path.join(directory, file_name)
     true_class = file_name.split('_')[-1][0]
-    predicted_class = run_inference(file_path)
+    if use_transformer:
+        predicted_class = run_inference(file_path)
+    else:
+        predicted_class = run_inference_transformer(file_path)
     file_number = re.search(r'\d+', file_name).group()
     if predicted_class == true_class:
         print(f'{file_number:2} {predicted_class} correct')
@@ -28,7 +42,7 @@ def process_file(file_name, directory):
         print(f'{file_number} {predicted_class} wrong')
         return False
 
-def evaluate_accuracy(directory):
+def evaluate_accuracy(directory, use_transformer):
     total_files = 0
     correct_predictions = 0
     files = [file_name for file_name in os.listdir(directory) if file_name.endswith('.wav')]
@@ -36,7 +50,7 @@ def evaluate_accuracy(directory):
         print("No .wav files found in the directory.")
         return
     with ThreadPoolExecutor() as executor:
-        results = executor.map(lambda file_name: process_file(file_name, directory), files)
+        results = executor.map(lambda file_name: process_file(file_name, directory, use_transformer), files)
     total_files = len(files)
     correct_predictions = sum(results)
     if total_files > 0:
@@ -47,9 +61,11 @@ def evaluate_accuracy(directory):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Batch inference script")
+    parser.add_argument('--transformer', action='store_true', help='Use distilled transformer model?')
+    args = parser.parse_args()
     start_time = time.time()
     eval_folder = input("Evaluate files in folder: ")
-    evaluate_accuracy("eval/" + eval_folder + "/")
+    evaluate_accuracy("eval/" + eval_folder + "/", args.transformer)
     elapsed_time = time.time() - start_time
     print(f"Evaluation completed in {elapsed_time:.2f} seconds.")
 

@@ -27,8 +27,6 @@ TEMPERATURE = 2.0    #Temperature for softening probabilities
 TRAIN_DIR = 'train'
 VAL_DIR = 'val'
 
-#------------------- Preprocessing Function for Transformer ------------------- #
-
 def preprocess_audio_transformer(file_path):
     #Use your existing preprocess_audio function with different parameters
     feature = preprocess_audio(
@@ -41,8 +39,6 @@ def preprocess_audio_transformer(file_path):
     frame_counts = np.arange(feature.shape[0]).reshape(-1, 1)
     feature = np.concatenate((feature, frame_counts), axis=1)
     return feature
-
-#------------------- Transformer Model Definition ------------------- #
 
 class AudioTransformer(nn.Module):
     def __init__(self):
@@ -58,8 +54,6 @@ class AudioTransformer(nn.Module):
         x = x.mean(dim=0)  #(batch_size, D_MODEL)
         logits = self.fc_out(x)  #(batch_size, 2)
         return logits
-
-#------------------- Dataset Class for Distillation ------------------- #
 
 class DistillationDataset(Dataset):
     def __init__(self, data_dir):
@@ -88,8 +82,6 @@ class DistillationDataset(Dataset):
         _, _, teacher_logits = main('infer', file_path)
         teacher_logits = torch.tensor(teacher_logits, dtype=torch.float32).squeeze(0)
         return features, label, teacher_logits
-
-#------------------- Training and Evaluation Functions ------------------- #
 
 def train_transformer(model, train_loader, criterion_ce, criterion_kd, optimizer, alpha, temperature):
     model.train()
@@ -129,10 +121,7 @@ def evaluate_transformer(model, val_loader):
     accuracy = total_correct / total_samples
     return accuracy
 
-#------------------- Main Function ------------------- #
-
 def main_transformer(mode, file=None):
-    #Initialize the Transformer model
     transformer_model = AudioTransformer().to(DEVICE)
     criterion_ce = nn.CrossEntropyLoss()
     criterion_kd = nn.KLDivLoss(reduction='batchmean')
@@ -141,7 +130,6 @@ def main_transformer(mode, file=None):
 
     def get_filename(epoch):
         return f'transformer_{TRANSFORMER_SAMPLING_RATE}_{TRANSFORMER_N_MFCC}_{epoch}.pth'
-
     if mode == 'train':
         train_dataset = DistillationDataset(TRAIN_DIR)
         val_dataset = DistillationDataset(VAL_DIR)
@@ -183,8 +171,6 @@ def main_transformer(mode, file=None):
         pred_class = classes[predicted_class]
         print(f'Prediction: {pred_class} {prob_B}')
         return pred_class, prob_B, logits.cpu().numpy()
-
-#------------------- Inference Function for Transformer ------------------- #
 
 def infer_transformer(model, file_path):
     model.eval()
