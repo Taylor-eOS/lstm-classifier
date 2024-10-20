@@ -3,7 +3,10 @@ import shutil
 import random
 from pydub import AudioSegment
 
-def split_audio_files(src_folder, dest_folder, chunk_length_ms=10000, hop_length_ms=5000, min_chunk_length_ms=1000):
+def split_audio_files(src_folder, dest_folder, chunk_length_ms=10240):
+    stride_factor = 2
+    hop_length_ms = chunk_length_ms // stride_factor
+    min_chunk_length_ms = chunk_length_ms // 10
     if not os.path.exists(dest_folder):
         os.makedirs(dest_folder)
     all_files = [f for f in os.listdir(src_folder) if os.path.isfile(os.path.join(src_folder, f))]

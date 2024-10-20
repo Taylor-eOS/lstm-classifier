@@ -12,10 +12,10 @@ from utils import AudioDataset, preprocess_audio
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 SAMPLING_RATE = 4000
 N_MFCC = 10
+SEQ_LENGTH = 160 #frames
 HIDDEN_SIZE = 128
 NUM_LAYERS = 2
-SEQ_LENGTH = 100
-MAX_EPOCHS = 10 #default, you will be prompted
+MAX_EPOCHS = 8 #default, you will be prompted
 BATCH_SIZE = 32
 LEARNING_RATE = 0.0001
 ACCURACY_THRESHOLD = 0.995
@@ -79,13 +79,13 @@ def evaluate(model, val_loader, criterion):
     print(f'Validation Loss: {avg_loss:.4f}')
     return avg_loss, accuracy
 
-def main(mode, file=None):
+def main(mode, file=None, teach=False):
     model = AudioClassifier().to(DEVICE)
     criterion = nn.NLLLoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     last_loss = None
     def get_filename(epoch):
-        return f'model_{SAMPLING_RATE}_{N_MFCC}_{HIDDEN_SIZE}_{NUM_LAYERS}_{SEQ_LENGTH}_{epoch}.pth'
+        return f'lstm_{SAMPLING_RATE}_{N_MFCC}_{SEQ_LENGTH}_{epoch}.pth'
     if mode == 'train':
         MAX_EPOCHS = int(input("Max. epochs: "))
         train_dataset = AudioDataset(TRAIN_DIR, seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
@@ -129,13 +129,15 @@ def main(mode, file=None):
         classes = ['A', 'B']
         pred_class = classes[preds.item()]
         prob_B = probabilities[:, 1].item()
-        print(f'Prediction: {pred_class} {prob_B}')
+        if not teach:
+            print(f'LSTM prediction: {pred_class} with {prob_B}')
         return pred_class, prob_B, logits
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Audio Classification Script')
     parser.add_argument('--mode', type=str, required=True, choices=['train', 'infer'], help='Mode: train or infer')
     parser.add_argument('--file', type=str, help='Path to audio file for inference (required for infer mode)')
+    parser.add_argument('--teach', action='store_true', help='Called as teach?')
     args = parser.parse_args()
-    main(args.mode, args.file)
+    main(args.mode, args.file, args.teach)
 

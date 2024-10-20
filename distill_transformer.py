@@ -11,48 +11,41 @@ from main import main
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 TRANSFORMER_SAMPLING_RATE = 2000
-TRANSFORMER_N_MFCC = 5
-TRANSFORMER_SEQ_LENGTH = 50
-INPUT_DIM = TRANSFORMER_N_MFCC * 3 + 1  #+1 for frame counts
+TRANSFORMER_N_MFCC = 4
+TRANSFORMER_FRAMES = 20 #frames
+INPUT_DIM = TRANSFORMER_N_MFCC * 3
 D_MODEL = 32
 NHEAD = 4
 NUM_LAYERS = 2
 DIM_FEEDFORWARD = 128
 DROPOUT = 0.1
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 LEARNING_RATE = 0.001
-MAX_EPOCHS = 5
-ALPHA = 0.5          #Weight for the student loss
-TEMPERATURE = 2.0    #Temperature for softening probabilities
+MAX_EPOCHS = 5 #default, you will be prompted
+ALPHA = 0.5 #Weight for the student loss
+TEMP = 2.0 #Temperature for softening probabilities
 TRAIN_DIR = 'train'
 VAL_DIR = 'val'
-
-def preprocess_audio_transformer(file_path):
-    #Use your existing preprocess_audio function with different parameters
-    feature = preprocess_audio(
-        file_path,
-        sampling_rate=TRANSFORMER_SAMPLING_RATE,
-        n_mfcc=TRANSFORMER_N_MFCC,
-        seq_length=TRANSFORMER_SEQ_LENGTH
-    )
-    #Add frame counts as an extra dimension
-    frame_counts = np.arange(feature.shape[0]).reshape(-1, 1)
-    feature = np.concatenate((feature, frame_counts), axis=1)
-    return feature
 
 class AudioTransformer(nn.Module):
     def __init__(self):
         super(AudioTransformer, self).__init__()
-        self.embedding = nn.Linear(INPUT_DIM, D_MODEL)
-        encoder_layer = nn.TransformerEncoderLayer(d_model=D_MODEL, nhead=NHEAD, dim_feedforward=DIM_FEEDFORWARD, dropout=DROPOUT)
+        self.embedding = nn.Linear(INPUT_DIM + 1, D_MODEL)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=D_MODEL, 
+            nhead=NHEAD, 
+            dim_feedforward=DIM_FEEDFORWARD, 
+            dropout=DROPOUT
+        )
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=NUM_LAYERS)
-        self.fc_out = nn.Linear(D_MODEL, 2)  #Assuming binary classification
+        self.fc_out = nn.Linear(D_MODEL, 2)
+
     def forward(self, x):
-        x = self.embedding(x)  #(batch_size, seq_length, D_MODEL)
-        x = x.permute(1, 0, 2)  #(seq_length, batch_size, D_MODEL)
+        x = self.embedding(x)  # (batch_size, seq_length, D_MODEL)
+        x = x.permute(1, 0, 2)  # (seq_length, batch_size, D_MODEL)
         x = self.transformer_encoder(x)
-        x = x.mean(dim=0)  #(batch_size, D_MODEL)
-        logits = self.fc_out(x)  #(batch_size, 2)
+        x = x.mean(dim=0)  # (batch_size, D_MODEL)
+        logits = self.fc_out(x)  # (batch_size, 2)
         return logits
 
 class DistillationDataset(Dataset):
@@ -82,6 +75,14 @@ class DistillationDataset(Dataset):
         _, _, teacher_logits = main('infer', file_path)
         teacher_logits = torch.tensor(teacher_logits, dtype=torch.float32).squeeze(0)
         return features, label, teacher_logits
+
+def preprocess_audio_transformer(file_path):
+    #Use your existing preprocess_audio function with different parameters
+    feature = preprocess_audio(file_path, sampling_rate=TRANSFORMER_SAMPLING_RATE, n_mfcc=TRANSFORMER_N_MFCC, seq_length=TRANSFORMER_FRAMES)
+    #Add frame counts as an extra dimension
+    frame_counts = np.arange(feature.shape[0]).reshape(-1, 1)
+    feature = np.concatenate((feature, frame_counts), axis=1)
+    return feature
 
 def train_transformer(model, train_loader, criterion_ce, criterion_kd, optimizer, alpha, temperature):
     model.train()
@@ -127,17 +128,17 @@ def main_transformer(mode, file=None):
     criterion_kd = nn.KLDivLoss(reduction='batchmean')
     optimizer = optim.Adam(transformer_model.parameters(), lr=LEARNING_RATE)
     last_loss = None
-
     def get_filename(epoch):
-        return f'transformer_{TRANSFORMER_SAMPLING_RATE}_{TRANSFORMER_N_MFCC}_{epoch}.pth'
+        return f'transformer_{TRANSFORMER_SAMPLING_RATE}_{TRANSFORMER_N_MFCC}_{TRANSFORMER_FRAMES}_{epoch}.pth'
     if mode == 'train':
+        MAX_EPOCHS = int(input("Max. epochs: "))
         train_dataset = DistillationDataset(TRAIN_DIR)
         val_dataset = DistillationDataset(VAL_DIR)
         train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
         val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
         for epoch in range(MAX_EPOCHS):
             print(f'Epoch {epoch+1}/{MAX_EPOCHS}')
-            train_loss = train_transformer(transformer_model, train_loader, criterion_ce, criterion_kd, optimizer, ALPHA, TEMPERATURE)
+            train_loss = train_transformer(transformer_model, train_loader, criterion_ce, criterion_kd, optimizer, ALPHA, TEMP)
             val_accuracy = evaluate_transformer(transformer_model, val_loader)
             if last_loss is None:
                 print(f"Delta: higher is better")
@@ -162,14 +163,14 @@ def main_transformer(mode, file=None):
         if not matching_files:
             raise ValueError("No matching model file found for the current architecture parameters.")
         filename = matching_files[0]
-        transformer_model.load_state_dict(torch.load(filename, map_location=DEVICE))
+        transformer_model.load_state_dict(torch.load(filename, map_location=DEVICE, weights_only=True))
         print(f'Loaded model from {filename}')
         logits = infer_transformer(transformer_model, file)
         classes = ['A', 'B']
         predicted_class = torch.argmax(logits, dim=1).item()
         prob_B = nn.functional.softmax(logits, dim=1)[:, 1].item()
         pred_class = classes[predicted_class]
-        print(f'Prediction: {pred_class} {prob_B}')
+        print(f'Transformer prediction: {pred_class} with {prob_B}')
         return pred_class, prob_B, logits.cpu().numpy()
 
 def infer_transformer(model, file_path):

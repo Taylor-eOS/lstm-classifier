@@ -18,7 +18,7 @@ def run_inference(file_path):
             return 'B'
         else:
             print(f'Error: Unexpected inference output for {file_path}')
-            return None
+            return 'B'
     except subprocess.CalledProcessError as e:
         print(f'Error running inference on {file_path}: {e}')
         return None
