@@ -13,7 +13,6 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 TRANSFORMER_SAMPLING_RATE = 2000
 TRANSFORMER_N_MFCC = 4
 TRANSFORMER_FRAMES = 20 #frames
-INPUT_DIM = TRANSFORMER_N_MFCC * 3
 D_MODEL = 32
 NHEAD = 4
 NUM_LAYERS = 2
@@ -30,7 +29,7 @@ VAL_DIR = 'val'
 class AudioTransformer(nn.Module):
     def __init__(self):
         super(AudioTransformer, self).__init__()
-        self.embedding = nn.Linear(INPUT_DIM + 1, D_MODEL)
+        self.embedding = nn.Linear(TRANSFORMER_N_MFCC * 3 + 1, D_MODEL)
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=D_MODEL, 
             nhead=NHEAD, 
@@ -72,7 +71,7 @@ class DistillationDataset(Dataset):
         features = torch.tensor(features, dtype=torch.float32)
         label = torch.tensor(label, dtype=torch.long)
         #Get teacher logits by calling the LSTM's main function
-        _, _, teacher_logits = main('infer', file_path)
+        _, _, teacher_logits = main('infer', file_path, True)
         teacher_logits = torch.tensor(teacher_logits, dtype=torch.float32).squeeze(0)
         return features, label, teacher_logits
 

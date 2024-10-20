@@ -2,26 +2,25 @@ import os
 import time
 import math
 import argparse
-import subprocess
 import tempfile
 from pydub import AudioSegment
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from utils import convert_mp3, convert_wav
+from main import main
 
 def run_inference(file_path):
     try:
-        result = subprocess.run(['python', 'main.py', '--mode', 'infer', '--file', file_path], capture_output=True, text=True, check=True)
-        output = result.stdout.strip()
-        if 'A' in output:
+        pred_class, prob_B, logits = main(mode='infer', file=file_path)
+        if pred_class == 'A':
             return 'A'
-        elif 'B' in output:
+        elif pred_class == 'B':
             return 'B'
         else:
             print(f'Error: Unexpected inference output for {file_path}')
             return 'B'
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         print(f'Error running inference on {file_path}: {e}')
-        return None
+        return 'B'
 
 #Processes a single audio chunk: saves it temporarily, runs inference, and deletes the temp file.
 def process_chunk(chunk_index, chunk):

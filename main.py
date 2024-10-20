@@ -85,7 +85,7 @@ def main(mode, file=None, teach=False):
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     last_loss = None
     def get_filename(epoch):
-        return f'lstm_{SAMPLING_RATE}_{N_MFCC}_{SEQ_LENGTH}_{epoch}.pth'
+        return f'lstm_{SAMPLING_RATE}_{N_MFCC}_{SEQ_LENGTH}_{HIDDEN_SIZE}_{epoch}.pth'
     if mode == 'train':
         MAX_EPOCHS = int(input("Max. epochs: "))
         train_dataset = AudioDataset(TRAIN_DIR, seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
