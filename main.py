@@ -1,13 +1,14 @@
 import os
 import shutil
+import glob
 import argparse
+import random
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-import numpy as np
-import glob
-from utils import AudioDataset, preprocess_audio
+from utils import AudioDataset, preprocess_audio, create_empty_folder
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 SAMPLING_RATE = 4000
@@ -22,6 +23,7 @@ ACCURACY_THRESHOLD = 0.995
 MIN_ACCURACY = 0.8
 TRAIN_DIR = 'train'
 VAL_DIR = 'val'
+MODEL = None
 
 class AudioClassifier(nn.Module):
     def __init__(self):
@@ -35,10 +37,14 @@ class AudioClassifier(nn.Module):
         out = self.fc(out)
         return self.softmax(out)
 
-def train(model, train_loader, criterion, optimizer):
+def train(model, train_loader, criterion, optimizer, data_proportion=4):
+    train_loader_list = list(train_loader)
+    num_batches = len(train_loader_list) // data_proportion
+    print(f'Using 1/{data_proportion} of the training data, {num_batches} batches')
     model.train()
     total_loss = 0
-    for data, labels in train_loader:
+    selected_batches = random.sample(train_loader_list, num_batches)
+    for data, labels in selected_batches:
         data = data.to(DEVICE)
         labels = labels.to(DEVICE)
         optimizer.zero_grad()
@@ -47,8 +53,8 @@ def train(model, train_loader, criterion, optimizer):
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
-    avg_loss = total_loss / len(train_loader)
-    print(f'Training Loss: {avg_loss:.4f}')
+    avg_loss = total_loss / num_batches
+    print(f'Training Loss: {avg_loss:.3f}')
 
 def infer(model, file_path):
     model.eval()
@@ -75,18 +81,30 @@ def evaluate(model, val_loader, criterion):
             correct += (preds == labels).sum().item()
     avg_loss = total_loss / len(val_loader)
     accuracy = correct / len(val_loader.dataset)
-    print(f'Accuracy: {accuracy:.4f}')
-    print(f'Validation Loss: {avg_loss:.4f}')
+    print(f'Accuracy: {accuracy * 100:.1f}%')
+    print(f'Validation Loss: {avg_loss:.3f}')
     return avg_loss, accuracy
 
-def main(mode, file=None, teach=False):
-    model = AudioClassifier().to(DEVICE)
-    criterion = nn.NLLLoss()
-    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-    last_loss = None
-    def get_filename(epoch):
-        return f'lstm_{SAMPLING_RATE}_{N_MFCC}_{SEQ_LENGTH}_{HIDDEN_SIZE}_{epoch}.pth'
+def get_model(filename=None):
+    global MODEL
+    if MODEL is None:
+        MODEL = AudioClassifier().to(DEVICE)
+        if filename:
+            checkpoint = torch.load(filename, map_location=DEVICE, weights_only=True)
+            print(f'Loaded model from {filename}')
+            MODEL.load_state_dict(checkpoint)
+    return MODEL
+
+def get_filename(epoch):
+    return f'lstm_{SAMPLING_RATE}_{N_MFCC}_{SEQ_LENGTH}_{HIDDEN_SIZE}_{epoch}.pth'
+
+def main(mode, input_file=None, model=None):
     if mode == 'train':
+        create_empty_folder('models')
+        get_model()
+        criterion = nn.NLLLoss()
+        optimizer = optim.Adam(MODEL.parameters(), lr=LEARNING_RATE)
+        last_loss = None
         MAX_EPOCHS = int(input("Max. epochs: "))
         train_dataset = AudioDataset(TRAIN_DIR, seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
         val_dataset = AudioDataset(VAL_DIR, seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
@@ -94,50 +112,48 @@ def main(mode, file=None, teach=False):
         val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
         for epoch in range(MAX_EPOCHS):
             print(f'Epoch {epoch+1}/{MAX_EPOCHS}')
-            train(model, train_loader, criterion, optimizer)
-            loss, accuracy = evaluate(model, val_loader, criterion)
+            train(MODEL, train_loader, criterion, optimizer)
+            loss, accuracy = evaluate(MODEL, val_loader, criterion)
             if last_loss is None:
-                print(f"Delta: higher is better")
+                print("Delta: higher is better")
             else:
                 delta = loss - last_loss
                 print(f"Delta: {delta * -100:.2f}%")
             last_loss = loss
             filename = get_filename(str(epoch+1))
+            filename = os.path.join('models', filename)
             if accuracy > MIN_ACCURACY:
-                torch.save(model.state_dict(), filename)
+                torch.save(MODEL.state_dict(), filename)
                 if os.path.exists(filename):
                     print('Model saved as', filename)
             if accuracy > ACCURACY_THRESHOLD:
-                print(f"{accuracy} accuracy is good enough. Stopping early at epoch {epoch}.")
+                print(f"Accuracy {accuracy} is above {ACCURACY_THRESHOLD}.")
+                print(f"Stopping training early at epoch {epoch}.")
                 break
-            print('-' * 3)
     elif mode == 'infer':
-        if file is None:
+        if input_file is None:
             raise ValueError("File path is required for inference mode.")
-        if not os.path.exists(file):
-            print(f'File "{file}" does not exist.')
+        if not os.path.exists(input_file):
+            print(f'File "{input_file}" does not exist.')
             return
-        expected_filename = get_filename('*')
-        matching_files = glob.glob(expected_filename)
-        if not matching_files:
-            raise ValueError("No matching model file found for the current architecture parameters.")
-        filename = matching_files[0]
-        checkpoint = torch.load(filename, map_location=DEVICE, weights_only=True)
-        print(f'Loaded model from {filename}')
-        model.load_state_dict(checkpoint)
-        logits, preds, probabilities = infer(model, file)
+        if model is None:
+            matching_files = glob.glob(get_filename('*'))
+            if not matching_files:
+                raise ValueError("No matching model file found for the current architecture parameters.")
+            filename = matching_files[0]
+            model = get_model(filename)
+        logits, preds, probabilities = infer(model, input_file)
         classes = ['A', 'B']
         pred_class = classes[preds.item()]
         prob_B = probabilities[:, 1].item()
-        if not teach:
-            print(f'LSTM prediction: {pred_class} with {prob_B}')
+        if __name__ == "__main__":
+            print(f'LSTM prediction: {pred_class} with {prob_B:.2f}')
         return pred_class, prob_B, logits
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Audio Classification Script')
-    parser.add_argument('--mode', type=str, required=True, choices=['train', 'infer'], help='Mode: train or infer')
-    parser.add_argument('--file', type=str, help='Path to audio file for inference (required for infer mode)')
-    parser.add_argument('--teach', action='store_true', help='Called as teach?')
+    parser.add_argument('--f', type=str, help='Path to audio file for inference')
     args = parser.parse_args()
-    main(args.mode, args.file, args.teach)
+    mode = 'infer' if args.f else 'train'
+    main(mode, args.f)
 
