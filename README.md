@@ -14,14 +14,14 @@ This project is an excellent simple example of neural net technology in use, tha
    - Use `separate_chunks_tool.py` to segment the input files into small chunks for training. It will randomly set aside 10% of your files as a validation set and move the files into the right folders.
    - Run the training script:
      ```bash
-     python main.py --mode train
+     python main.py
      ```
    - If everything was placed correctly, the model will be trained and saved.
 
 2. **Running Inference:**
    - To classify a single audio chunk for testing functionality, use the inference mode:
      ```bash
-     python main.py --mode infer --file file.wav
+     python main.py --f file.wav
      ```
    - The output will indicate whether the file is classified as `A` or `B`.
 
