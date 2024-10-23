@@ -7,12 +7,10 @@ from main import main as main_main
 from distill_transformer import main_transformer as distill_main
 
 def run_inference(file_path):
-    #print('lstm')
-    pred_class, prob_B, logits = main_main(mode='infer', file=file_path)
+    pred_class, prob_B, logits = main_main(mode='infer', input_file=file_path)
     return pred_class, prob_B, logits
 
 def run_inference_transformer(file_path):
-    #print('transformer')
     pred_class, prob_B, logits = distill_main(mode='infer', file=file_path)
     return pred_class, prob_B, logits
 
@@ -34,7 +32,6 @@ def process_file(file_name, directory, use_transformer):
         return False
 
 def evaluate_accuracy(directory, use_transformer):
-    #print(f'{use_transformer}')
     files = [file_name for file_name in os.listdir(directory) if file_name.endswith('.wav')]
     if not files:
         print("No .wav files found in the directory.")
