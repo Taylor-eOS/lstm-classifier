@@ -1,10 +1,14 @@
 import os
+import time
 import shutil
 import librosa
 import numpy as np
 from pydub import AudioSegment
 import torch
 from torch.utils.data import Dataset
+
+LAST_PRINT_TIME = 0
+PRINT_DEBUG = False
 
 class AudioDataset(Dataset):
     def __init__(self, data_dir, seq_length=100, sampling_rate=4000, n_mfcc=10):
@@ -33,7 +37,7 @@ class AudioDataset(Dataset):
         label = torch.tensor(label, dtype=torch.long)
         return features, label
 
-def preprocess_audio(file_path, sampling_rate=4000, n_mfcc=10, seq_length=100, n_fft=512, hop_length=256):
+def preprocess_audio(file_path, sampling_rate=4000, n_mfcc=10, seq_length=100, hop_length=256, n_fft=512):
     audio, sr = librosa.load(file_path, sr=sampling_rate)
     #print(f"Sampling rate: {sr}, seqence length: {seq_length}")
     mfcc = librosa.feature.mfcc(y=audio, sr=sampling_rate, n_mfcc=n_mfcc, n_fft=n_fft, hop_length=hop_length)
@@ -45,8 +49,11 @@ def preprocess_audio(file_path, sampling_rate=4000, n_mfcc=10, seq_length=100, n
     feature = np.concatenate((mfcc, delta_mfcc, delta2_mfcc), axis=0)
     feature = feature.T
     def print_debug(string):
-        #print(f'{string} {feature.shape[0]} {seq_length}')
-        pass
+        global LAST_PRINT_TIME
+        current_time = time.time()
+        if current_time - LAST_PRINT_TIME >= 30 and PRINT_DEBUG:
+            print(f'feature shape: {feature.shape[0]}, sequence length: {seq_length}, {string}')
+            LAST_PRINT_TIME = current_time
     if feature.shape[0] < seq_length:
         print_debug('padding')
         pad_width = seq_length - feature.shape[0]

@@ -2,8 +2,9 @@ import os
 import shutil
 import random
 from pydub import AudioSegment
+from process_file import CHUNK_LENGTH
 
-def split_audio_files(src_folder, dest_folder, chunk_length_ms=10240):
+def split_audio_files(src_folder, dest_folder, chunk_length_ms=CHUNK_LENGTH):
     stride_factor = 2
     hop_length_ms = chunk_length_ms // stride_factor
     min_chunk_length_ms = chunk_length_ms // 10

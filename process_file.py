@@ -6,10 +6,10 @@ import tempfile
 import glob
 from pydub import AudioSegment
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from utils import convert_mp3
 from main import main, get_model, get_filename
+from utils import convert_mp3
 
-CHUNK_LENGTH = 10240
+CHUNK_LENGTH = 8192
 
 #Applies a heuristic to correct misclassifications and enforce the expected segment pattern.
 def apply_forgiving_heuristic(predictions, min_surround_chunks=3, max_flip_length=2):
