@@ -7,7 +7,6 @@ from pydub import AudioSegment
 import torch
 from torch.utils.data import Dataset
 
-CHUNK_LENGTH = 8192
 LAST_PRINT_TIME = 0
 PRINT_DEBUG = False
 

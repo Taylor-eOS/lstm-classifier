@@ -26,6 +26,7 @@ MIN_ACCURACY = 0.7
 TRAIN_DIR = 'train'
 VAL_DIR = 'val'
 BATCH_PROPORTION = 4
+CHUNK_LENGTH = 8192
 CLASSES = ['A', 'B']
 
 class AudioClassifier(nn.Module):

@@ -4,7 +4,7 @@ import time
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 from main import main, BATCH_SIZE
-#from distill_transformer import main_transformer
+from use_transformer_directly import main_transformer
 
 def run_inference(file_path):
     pred_class, prob_B, logits = main(mode='infer', input_file=file_path)
@@ -17,7 +17,7 @@ def run_inference_transformer(file_path):
 def evaluate_accuracy(directory, use_transformer, batch_size=BATCH_SIZE):
     files = [file_name for file_name in os.listdir(directory) if file_name.endswith('.wav')]
     if not files:
-        print("No .wav files found in the directory.")
+        print("No wav files found in the directory.")
         return
     total_files = len(files)
     correct_predictions = 0

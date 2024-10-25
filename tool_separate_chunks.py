@@ -2,7 +2,7 @@ import os
 import shutil
 import random
 from pydub import AudioSegment
-from utils import CHUNK_LENGTH
+from main import CHUNK_LENGTH
 
 def split_audio_files(src_folder, dest_folder, chunk_length_ms=CHUNK_LENGTH):
     stride_factor = 2

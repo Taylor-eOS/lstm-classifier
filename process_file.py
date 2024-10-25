@@ -6,8 +6,7 @@ import numpy as np
 import torch
 from pydub import AudioSegment
 from concurrent.futures import ThreadPoolExecutor
-from main import infer, BATCH_SIZE, CLASSES, get_model, get_matching_file, get_filename
-from utils import CHUNK_LENGTH
+from main import infer, BATCH_SIZE, CLASSES, get_model, get_matching_file, get_filename, CHUNK_LENGTH
 
 KEEP_CHUNKS = True
 PRINT_PREDICTIONS = True
