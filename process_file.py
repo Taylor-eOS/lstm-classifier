@@ -45,6 +45,18 @@ def apply_forgiving_heuristic(predictions, min_surround_chunks=3, max_flip_lengt
             corrected_predictions.append(label)
     return corrected_predictions
 
+def print_timestamps(corrected_predictions, chunk_length_ms, total_length_ms):
+    boundary_points_sec = []
+    for i in range(1, len(corrected_predictions)):
+        if corrected_predictions[i] != corrected_predictions[i - 1]:
+            boundary = i * chunk_length_ms / 1000  #Convert ms to sec
+            boundary_points_sec.append(boundary)
+    if boundary_points_sec and boundary_points_sec[0] == 0:
+        boundary_points_sec = boundary_points_sec[1:]
+    if boundary_points_sec and boundary_points_sec[-1] == total_length_ms / 1000:  #Convert total length to sec
+        boundary_points_sec = boundary_points_sec[:-1]
+    print(' '.join(map(lambda x: str(int(round(x))), boundary_points_sec)))
+
 def reconstruct_audio(predictions, chunks, input_file=None, desired_label='B'):
     total_time = 0
     A_segments = []
@@ -74,18 +86,6 @@ def reconstruct_audio(predictions, chunks, input_file=None, desired_label='B'):
         start_min, start_sec = divmod(start_ms // 1000, 60)
         end_min, end_sec = divmod(end_ms // 1000, 60)
     return combined_audio
-
-def print_timestamps(corrected_predictions, chunk_length_ms, total_length_ms):
-    boundary_points_sec = []
-    for i in range(1, len(corrected_predictions)):
-        if corrected_predictions[i] != corrected_predictions[i - 1]:
-            boundary = i * chunk_length_ms / 1000  #Convert ms to sec
-            boundary_points_sec.append(boundary)
-    if boundary_points_sec and boundary_points_sec[0] == 0:
-        boundary_points_sec = boundary_points_sec[1:]
-    if boundary_points_sec and boundary_points_sec[-1] == total_length_ms / 1000:  #Convert total length to sec
-        boundary_points_sec = boundary_points_sec[:-1]
-    print(' '.join(map(lambda x: str(int(round(x))), boundary_points_sec)))
 
 def run_inference(file_path, model):
     try:

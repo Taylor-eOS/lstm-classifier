@@ -3,8 +3,8 @@ import time
 import shutil
 import argparse
 import random
-import numpy as np
 import glob
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -16,14 +16,15 @@ SAMPLING_RATE = 4000
 N_MFCC = 10
 SEQ_LENGTH = 128 #frames
 HIDDEN_SIZE = 128
+HOP_LENGTH = 256
 NUM_LAYERS = 2
 BATCH_SIZE = 32
 LEARNING_RATE = 0.0001
-ACCURACY_THRESHOLD = 0.995
-MIN_ACCURACY = 0.5
+ACCURACY_THRESHOLD = 0.99
+MIN_ACCURACY = 0.75
 TRAIN_DIR = 'train'
 VAL_DIR = 'val'
-DATA_PROPORTION = 32
+DATA_PROPORTION = 4
 
 class AudioClassifier(nn.Module):
     def __init__(self):
@@ -55,12 +56,23 @@ def train(model, train_loader, criterion, optimizer):
     avg_loss = total_loss / num_batches
     print(f'Training Loss: {avg_loss:.3f}')
 
-def infer(model, file_path):
+def infer(model, file_paths):
     model.eval()
-    features = preprocess_audio(file_path, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC, seq_length=SEQ_LENGTH)
-    features = torch.tensor(features, dtype=torch.float32).unsqueeze(0).to(DEVICE)
+    if isinstance(file_paths, str):
+        file_paths = [file_paths]
+    features_batch = [
+        preprocess_audio(
+            file,
+            sampling_rate=SAMPLING_RATE,
+            n_mfcc=N_MFCC,
+            seq_length=SEQ_LENGTH,
+            hop_length=HOP_LENGTH
+        ) for file in file_paths
+    ]
+    features_batch = np.array(features_batch, dtype=np.float32)
+    features_batch = torch.from_numpy(features_batch).to(DEVICE)
     with torch.no_grad():
-        logits = model(features)
+        logits = model(features_batch)
         preds = logits.argmax(dim=1)
         probabilities = torch.softmax(logits, dim=1)
     return logits, preds, probabilities
@@ -113,9 +125,9 @@ def main(mode, batch_size=BATCH_SIZE, input_file=None, model=None):
         val_dataset = AudioDataset(VAL_DIR, seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
         train_loader = DataLoader(train_dataset, batch_size, shuffle=True)
         val_loader = DataLoader(val_dataset, batch_size, shuffle=False)
-        #create_empty_folder('models')
         last_loss = 1.0
         highest_accuracy = MIN_ACCURACY
+        best_model = None
         print(f'Each epoch uses 1/{DATA_PROPORTION} of the training data')
         for epoch in range(max_epochs):
             print(f'Epoch {epoch+1}/{max_epochs}')
@@ -127,14 +139,15 @@ def main(mode, batch_size=BATCH_SIZE, input_file=None, model=None):
             print(f"Loss delta: {(loss - last_loss) * -100:.2f}%")
             last_loss = loss
             filename = get_filename(epoch+1)
-            #filename = os.path.join('models', filename)
             if accuracy > MIN_ACCURACY and accuracy > highest_accuracy:
                 torch.save(model.state_dict(), filename)
-                if os.path.exists(filename):
-                    print('Model saved as', os.path.basename(filename))
+                print('Model saved as', os.path.basename(filename))
                 highest_accuracy = accuracy
+                if best_model and os.path.exists(best_model):
+                    os.remove(best_model)
+                best_model = filename
             else:
-                print('Not saving')
+                print('Model not saving')
             if accuracy > ACCURACY_THRESHOLD:
                 print(f"Accuracy {accuracy} is above {ACCURACY_THRESHOLD}. Stopping early.")
                 break
@@ -142,19 +155,27 @@ def main(mode, batch_size=BATCH_SIZE, input_file=None, model=None):
     elif mode == 'infer':
         if input_file is None:
             raise ValueError("File path is required for inference mode.")
-        if not os.path.exists(input_file):
-            print(f'File "{input_file}" does not exist.')
-            return
+        if isinstance(input_file, str):
+            input_file = [input_file]
         if model is None:
             filename = get_matching_file(get_filename)
             model = get_model(filename)
         logits, preds, probabilities = infer(model, input_file)
         classes = ['A', 'B']
-        pred_class = classes[preds.item()]
-        prob_B = probabilities[:, 1].item()
-        if __name__ == "__main__":
-            print(f'LSTM prediction: {pred_class} with {prob_B * 100:.2f}% certainty')
-        return pred_class, prob_B, logits
+        pred_classes = [classes[pred.item()] for pred in preds]
+        if probabilities.dim() == 1:
+            prob_Bs = probabilities[1].item()
+        else:
+            prob_Bs = probabilities[:, 1].tolist()
+        if isinstance(input_file, list):
+            if len(input_file) == 1:
+                if __name__ == "__main__":
+                    print(f'LSTM prediction: {pred_classes[0]}')
+                return pred_classes[0], prob_Bs, logits[0]
+            else:
+                return pred_classes, prob_Bs, logits
+        else:
+            return pred_classes[0], prob_Bs, logits[0]
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Audio Classification Script')
