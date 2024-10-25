@@ -1,3 +1,4 @@
+# main.py
 import os
 import time
 import shutil
@@ -15,8 +16,9 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 SAMPLING_RATE = 4000
 N_MFCC = 10
 SEQ_LENGTH = 128 #frames
-HIDDEN_SIZE = 128
 HOP_LENGTH = 256
+HIDDEN_SIZE = 128
+MAX_EPOCHS = 20
 NUM_LAYERS = 2
 BATCH_SIZE = 32
 LEARNING_RATE = 0.0001
@@ -24,7 +26,8 @@ ACCURACY_THRESHOLD = 0.99
 MIN_ACCURACY = 0.75
 TRAIN_DIR = 'train'
 VAL_DIR = 'val'
-DATA_PROPORTION = 4
+BATCH_PROPORTION = 4
+CLASSES = ['A', 'B']
 
 class AudioClassifier(nn.Module):
     def __init__(self):
@@ -40,7 +43,7 @@ class AudioClassifier(nn.Module):
 
 def train(model, train_loader, criterion, optimizer):
     train_loader_list = list(train_loader)
-    num_batches = len(train_loader_list) // DATA_PROPORTION
+    num_batches = len(train_loader_list) // BATCH_PROPORTION
     model.train()
     total_loss = 0
     selected_batches = random.sample(train_loader_list, num_batches)
@@ -58,8 +61,6 @@ def train(model, train_loader, criterion, optimizer):
 
 def infer(model, file_paths):
     model.eval()
-    if isinstance(file_paths, str):
-        file_paths = [file_paths]
     features_batch = [
         preprocess_audio(
             file,
@@ -110,14 +111,15 @@ def get_matching_file(filename_func): #get_filename or get_filename_transformer
 def get_model(filename=None):
     model = AudioClassifier().to(DEVICE)
     if filename:
-        checkpoint = torch.load(filename, map_location=DEVICE, weights_only=True)
+        checkpoint = torch.load(filename, map_location=DEVICE)
         print(f'Loaded model from {filename}')
         model.load_state_dict(checkpoint)
     return model
 
 def main(mode, batch_size=BATCH_SIZE, input_file=None, model=None):
     if mode == 'train':
-        max_epochs = int(input("Max. epochs: "))
+        #max_epochs = int(input("Max. epochs: "))
+        max_epochs = MAX_EPOCHS
         model = AudioClassifier().to(DEVICE)
         criterion = nn.NLLLoss()
         optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
@@ -128,7 +130,7 @@ def main(mode, batch_size=BATCH_SIZE, input_file=None, model=None):
         last_loss = 1.0
         highest_accuracy = MIN_ACCURACY
         best_model = None
-        print(f'Each epoch uses 1/{DATA_PROPORTION} of the training data')
+        print(f'Batch sampling: 1/{BATCH_PROPORTION} of the training data')
         for epoch in range(max_epochs):
             print(f'Epoch {epoch+1}/{max_epochs}')
             start_time = time.time()
@@ -155,27 +157,20 @@ def main(mode, batch_size=BATCH_SIZE, input_file=None, model=None):
     elif mode == 'infer':
         if input_file is None:
             raise ValueError("File path is required for inference mode.")
-        if isinstance(input_file, str):
-            input_file = [input_file]
-        if model is None:
-            filename = get_matching_file(get_filename)
-            model = get_model(filename)
+        input_file = [input_file] if isinstance(input_file, str) else input_file
+        model = get_model(get_matching_file(get_filename))
         logits, preds, probabilities = infer(model, input_file)
-        classes = ['A', 'B']
-        pred_classes = [classes[pred.item()] for pred in preds]
+        pred_classes = [CLASSES[pred.item()] for pred in preds]
         if probabilities.dim() == 1:
             prob_Bs = probabilities[1].item()
         else:
             prob_Bs = probabilities[:, 1].tolist()
-        if isinstance(input_file, list):
-            if len(input_file) == 1:
-                if __name__ == "__main__":
-                    print(f'LSTM prediction: {pred_classes[0]}')
-                return pred_classes[0], prob_Bs, logits[0]
-            else:
-                return pred_classes, prob_Bs, logits
-        else:
+        if len(input_file) == 1:
+            if __name__ == "__main__":
+                print(f'LSTM prediction: {pred_classes[0]} with probability {prob_Bs}')
             return pred_classes[0], prob_Bs, logits[0]
+        else:
+            return pred_classes, prob_Bs, logits
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Audio Classification Script')
