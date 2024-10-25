@@ -1,7 +1,7 @@
 import os
 import shutil
 from utils import convert_wav, convert_mp3
-from process_file import process_file
+from process_file import main_process
 
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -23,7 +23,7 @@ def main():
                 print(f"Failed to convert '{filename}' to WAV: {e}")
                 continue
             try:
-                process_file(wav_path)
+                main_process(wav_path)
                 print(f"Successfully processed '{os.path.basename(wav_path)}'.")
             except Exception as e:
                 print(f"Error processing '{wav_path}': {e}")

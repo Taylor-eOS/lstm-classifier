@@ -1,4 +1,3 @@
-# main.py
 import os
 import time
 import shutil
@@ -15,7 +14,7 @@ from utils import AudioDataset, preprocess_audio, create_empty_folder
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 SAMPLING_RATE = 4000
 N_MFCC = 10
-SEQ_LENGTH = 128 #frames
+SEQ_LENGTH = 128  #aka. frames
 HOP_LENGTH = 256
 HIDDEN_SIZE = 128
 MAX_EPOCHS = 20
@@ -23,7 +22,7 @@ NUM_LAYERS = 2
 BATCH_SIZE = 32
 LEARNING_RATE = 0.0001
 ACCURACY_THRESHOLD = 0.99
-MIN_ACCURACY = 0.75
+MIN_ACCURACY = 0.7
 TRAIN_DIR = 'train'
 VAL_DIR = 'val'
 BATCH_PROPORTION = 4
@@ -32,7 +31,7 @@ CLASSES = ['A', 'B']
 class AudioClassifier(nn.Module):
     def __init__(self):
         super(AudioClassifier, self).__init__()
-        self.lstm = nn.LSTM(input_size=N_MFCC*3, hidden_size=HIDDEN_SIZE, num_layers=NUM_LAYERS, batch_first=True)
+        self.lstm = nn.LSTM(input_size=N_MFCC * 3, hidden_size=HIDDEN_SIZE, num_layers=NUM_LAYERS, batch_first=True)
         self.fc = nn.Linear(HIDDEN_SIZE, 2)
         self.softmax = nn.LogSoftmax(dim=1)
     def forward(self, x):
@@ -101,7 +100,7 @@ def get_filename(epoch):
     epoch = str(epoch)
     return f'lstm_{SAMPLING_RATE}_{N_MFCC}_{SEQ_LENGTH}_{HIDDEN_SIZE}_{epoch}.pth'
 
-def get_matching_file(filename_func): #get_filename or get_filename_transformer
+def get_matching_file(filename_func):  #get_filename or get_filename_transformer
     matching_files = glob.glob(filename_func('*'))
     if not matching_files:
         raise ValueError("No matching model file found for the current architecture parameters.")
@@ -111,7 +110,7 @@ def get_matching_file(filename_func): #get_filename or get_filename_transformer
 def get_model(filename=None):
     model = AudioClassifier().to(DEVICE)
     if filename:
-        checkpoint = torch.load(filename, map_location=DEVICE)
+        checkpoint = torch.load(filename, map_location=DEVICE, weights_only=True)
         print(f'Loaded model from {filename}')
         model.load_state_dict(checkpoint)
     return model
@@ -140,7 +139,7 @@ def main(mode, batch_size=BATCH_SIZE, input_file=None, model=None):
             loss, accuracy = evaluate(model, val_loader, criterion)
             print(f"Loss delta: {(loss - last_loss) * -100:.2f}%")
             last_loss = loss
-            filename = get_filename(epoch+1)
+            filename = get_filename(epoch + 1)
             if accuracy > MIN_ACCURACY and accuracy > highest_accuracy:
                 torch.save(model.state_dict(), filename)
                 print('Model saved as', os.path.basename(filename))
@@ -149,7 +148,7 @@ def main(mode, batch_size=BATCH_SIZE, input_file=None, model=None):
                     os.remove(best_model)
                 best_model = filename
             else:
-                print('Model not saving')
+                print('Not saving model')
             if accuracy > ACCURACY_THRESHOLD:
                 print(f"Accuracy {accuracy} is above {ACCURACY_THRESHOLD}. Stopping early.")
                 break
@@ -162,13 +161,12 @@ def main(mode, batch_size=BATCH_SIZE, input_file=None, model=None):
         logits, preds, probabilities = infer(model, input_file)
         pred_classes = [CLASSES[pred.item()] for pred in preds]
         if probabilities.dim() == 1:
-            prob_Bs = probabilities[1].item()
-        else:
-            prob_Bs = probabilities[:, 1].tolist()
+            probabilities = probabilities.unsqueeze(0)
+        prob_Bs = probabilities[:, 1].tolist()
+        for i, (pred_class, prob_B) in enumerate(zip(pred_classes, prob_Bs), 1):
+            print(f'LSTM prediction: {pred_class} with probability {prob_B:.2f}')
         if len(input_file) == 1:
-            if __name__ == "__main__":
-                print(f'LSTM prediction: {pred_classes[0]} with probability {prob_Bs}')
-            return pred_classes[0], prob_Bs, logits[0]
+            return pred_classes[0], prob_Bs[0], logits[0]
         else:
             return pred_classes, prob_Bs, logits
 
