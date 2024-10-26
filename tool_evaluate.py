@@ -43,7 +43,7 @@ def evaluate_accuracy(directory, use_transformer, batch_size=BATCH_SIZE):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Batch inference script")
-    parser.add_argument('--t', action='store_true', help='Use distilled transformer')
+    parser.add_argument('--t', action='store_true', help='Use transformer')
     args = parser.parse_args()
     eval_folders = os.listdir("eval")
     if len(eval_folders) == 1:

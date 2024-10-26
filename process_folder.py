@@ -9,14 +9,14 @@ def main():
     os.makedirs(convert_dir, exist_ok=True)
     for filename in os.listdir(convert_dir):
         if filename.lower().endswith('.wav'):
-            print(f"This script uses mp3 files. The file \'{filename}\' was not processed.'")
+            print(f"This script handles mp3 files. The file \'{filename}\' was not processed.'")
         if filename.lower().endswith('.mp3'):
             base_name = os.path.splitext(filename)[0]
             mp3_path = os.path.join(convert_dir, filename)
             wav_path = os.path.join(convert_dir, f"{base_name}.wav")
             processed_wav_path = os.path.join(convert_dir, f"{base_name}_cut.wav")
             output_mp3_path = os.path.join(convert_dir, f"{base_name}_cut.mp3")
-            print(f"Processing '{filename}'")
+            #print(f"Processing '{filename}'")
             try:
                 convert_mp3(mp3_path, wav_path)
             except Exception as e:
@@ -24,7 +24,7 @@ def main():
                 continue
             try:
                 main_process(wav_path)
-                print(f"Successfully processed '{os.path.basename(wav_path)}'.")
+                print(f"Processed '{os.path.basename(wav_path)}'.")
             except Exception as e:
                 print(f"Error processing '{wav_path}': {e}")
                 continue

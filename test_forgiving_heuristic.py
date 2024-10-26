@@ -32,7 +32,7 @@ def main():
     predictions = run_forgiving_scripts(predictions)
     print("Corrected Predictions:")
     for idx, pred in enumerate(predictions, start=1):
-        print(f"Chunk {idx}: {pred}")
+        print(f"{idx:03} {pred}")
     if all(pred == 'A' for pred in predictions):
         print('All predictions are A')
     elif all(pred == 'B' for pred in predictions):

@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from utils import AudioDataset, preprocess_audio, create_empty_folder, CLASSES
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -20,13 +20,14 @@ HIDDEN_SIZE = 128
 MAX_EPOCHS = 20
 NUM_LAYERS = 2
 BATCH_SIZE = 32
-LEARNING_RATE = 0.0001
+LEARNING_RATE = 0.00005
+STOPPING = False
 ACCURACY_THRESHOLD = 0.99
 MIN_ACCURACY = 0.7
 TRAIN_DIR = 'train'
 VAL_DIR = 'val'
-BATCH_PROPORTION = 4
 CHUNK_LENGTH = 8192
+BATCHES_PER_EPOCH = 22
 
 class AudioClassifier(nn.Module):
     def __init__(self):
@@ -40,23 +41,24 @@ class AudioClassifier(nn.Module):
         out = self.fc(out)
         return self.softmax(out)
 
-def train(model, train_loader, criterion, optimizer):
-    train_loader_list = list(train_loader)
-    num_batches = len(train_loader_list) // BATCH_PROPORTION
-    model.train()
+def evaluate(model, val_loader, criterion):
+    model.eval()
     total_loss = 0
-    selected_batches = random.sample(train_loader_list, num_batches)
-    for data, labels in selected_batches:
-        data = data.to(DEVICE)
-        labels = labels.to(DEVICE)
-        optimizer.zero_grad()
-        outputs = model(data)
-        loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
-        total_loss += loss.item()
-    avg_loss = total_loss / num_batches
-    print(f'Training Loss: {avg_loss:.3f}')
+    correct = 0
+    with torch.no_grad():
+        for data, labels in val_loader:
+            data = data.to(DEVICE)
+            labels = labels.to(DEVICE)
+            outputs = model(data)
+            loss = criterion(outputs, labels)
+            total_loss += loss.item()
+            preds = outputs.argmax(dim=1)
+            correct += (preds == labels).sum().item()
+    avg_loss = total_loss / len(val_loader)
+    accuracy = correct / len(val_loader.dataset)
+    print(f'Accuracy: {accuracy * 100:.1f}%')
+    print(f'Validation Loss: {avg_loss:.3f}')
+    return avg_loss, accuracy
 
 def infer(model, file_paths):
     model.eval()
@@ -77,24 +79,28 @@ def infer(model, file_paths):
         probabilities = torch.softmax(logits, dim=1)
     return logits, preds, probabilities
 
-def evaluate(model, val_loader, criterion):
-    model.eval()
-    total_loss = 0
-    correct = 0
-    with torch.no_grad():
-        for data, labels in val_loader:
-            data = data.to(DEVICE)
-            labels = labels.to(DEVICE)
-            outputs = model(data)
-            loss = criterion(outputs, labels)
-            total_loss += loss.item()
-            preds = outputs.argmax(dim=1)
-            correct += (preds == labels).sum().item()
-    avg_loss = total_loss / len(val_loader)
-    accuracy = correct / len(val_loader.dataset)
-    print(f'Accuracy: {accuracy * 100:.1f}%')
-    print(f'Validation Loss: {avg_loss:.3f}')
-    return avg_loss, accuracy
+def train(model, train_dataset, criterion, optimizer, batch_size=BATCH_SIZE, batches_per_epoch=BATCHES_PER_EPOCH):
+    total_samples = len(train_dataset)
+    if batches_per_epoch is None or batches_per_epoch * batch_size > total_samples:
+        subset_indices = list(range(total_samples))
+    else:
+        num_samples = batches_per_epoch * batch_size
+        subset_indices = random.sample(range(total_samples), num_samples)
+    subset = Subset(train_dataset, subset_indices)
+    subset_loader = DataLoader(subset, batch_size, shuffle=True)
+    model.train()
+    total_loss = 0.0
+    for data, labels in subset_loader:
+        data = data.to(DEVICE)
+        labels = labels.to(DEVICE)
+        optimizer.zero_grad()
+        outputs = model(data)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item()
+    avg_loss = total_loss / len(subset_loader)
+    print(f'Training Loss: {avg_loss:.3f}')
 
 def get_filename(epoch):
     epoch = str(epoch)
@@ -117,30 +123,30 @@ def get_model(filename=None):
 
 def main(mode, batch_size=BATCH_SIZE, input_file=None, model=None):
     if mode == 'train':
-        #max_epochs = int(input("Max. epochs: "))
         max_epochs = MAX_EPOCHS
         model = AudioClassifier().to(DEVICE)
         criterion = nn.NLLLoss()
         optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
         train_dataset = AudioDataset(TRAIN_DIR, seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
         val_dataset = AudioDataset(VAL_DIR, seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
-        train_loader = DataLoader(train_dataset, batch_size, shuffle=True)
         val_loader = DataLoader(val_dataset, batch_size, shuffle=False)
+        print(f'Total samples: {len(train_dataset)}')
+        print(f'Batches: {len(train_dataset) / BATCH_SIZE}')
         last_loss = 1.0
         highest_accuracy = MIN_ACCURACY
         best_model = None
-        print(f'Batch sampling: 1/{BATCH_PROPORTION} of the training data')
+        print(f'Batch sampling: {BATCHES_PER_EPOCH} batches per epoch')
         for epoch in range(max_epochs):
             print(f'Epoch {epoch+1}/{max_epochs}')
             start_time = time.time()
-            train(model, train_loader, criterion, optimizer)
+            train(model, train_dataset, criterion, optimizer)
             elapsed_time = time.time() - start_time
             print(f'Elapsed time: {elapsed_time:.0f} seconds')
             loss, accuracy = evaluate(model, val_loader, criterion)
             print(f"Loss delta: {(loss - last_loss) * -100:.2f}%")
             last_loss = loss
             filename = get_filename(epoch + 1)
-            if accuracy > MIN_ACCURACY and accuracy > highest_accuracy:
+            if accuracy >= MIN_ACCURACY and accuracy >= highest_accuracy:
                 torch.save(model.state_dict(), filename)
                 print('Model saved as', os.path.basename(filename))
                 highest_accuracy = accuracy
@@ -148,11 +154,12 @@ def main(mode, batch_size=BATCH_SIZE, input_file=None, model=None):
                     os.remove(best_model)
                 best_model = filename
             else:
-                print('Not saving model')
-            if accuracy > ACCURACY_THRESHOLD:
+                print('Not saving model with lower accuracy')
+            if accuracy >= ACCURACY_THRESHOLD and STOPPING:
                 print(f"Accuracy {accuracy} is above {ACCURACY_THRESHOLD}. Stopping early.")
                 break
             print('')
+
     elif mode == 'infer':
         if input_file is None:
             raise ValueError("File path is required for inference mode.")
@@ -164,7 +171,7 @@ def main(mode, batch_size=BATCH_SIZE, input_file=None, model=None):
             probabilities = probabilities.unsqueeze(0)
         prob_Bs = probabilities[:, 1].tolist()
         for i, (pred_class, prob_B) in enumerate(zip(pred_classes, prob_Bs), 1):
-            print(f'LSTM prediction: {pred_class} with probability {prob_B:.2f}')
+            print(f'LSTM prediction: {pred_class} with B probability {prob_B:.2f}')
         if len(input_file) == 1:
             return pred_classes[0], prob_Bs[0], logits[0]
         else:
@@ -172,7 +179,7 @@ def main(mode, batch_size=BATCH_SIZE, input_file=None, model=None):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Audio Classification Script')
-    parser.add_argument('--f', type=str, help='Path to audio file for inference')
+    parser.add_argument('f', type=str, nargs='?', help='Path to audio file for inference')
     args = parser.parse_args()
     mode = 'infer' if args.f else 'train'
     main(mode, input_file=args.f)
