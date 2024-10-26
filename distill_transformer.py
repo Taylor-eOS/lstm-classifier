@@ -28,6 +28,35 @@ TRAIN_DIR = 'train'
 VAL_DIR = 'val'
 TEACHER_LOGITS_PATH = 'teacher_logits.pth'
 
+import os
+import time
+import argparse
+import glob
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader
+from main import infer, get_filename, get_matching_file, get_model, DEVICE, ACCURACY_THRESHOLD, MIN_ACCURACY, CLASSES
+from utils import preprocess_audio, create_empty_folder
+
+TRANSFORMER_SAMPLING_RATE = 2000
+TRANSFORMER_N_MFCC = 4
+TRANSFORMER_FRAMES = 32 #frames
+TRANSFORMER_HOP_LENGTH = 512
+D_MODEL = 32
+MAX_EPOCHS = 20
+NUM_LAYERS = 2
+NHEAD = 4
+DIM_FEEDFORWARD = 128
+TRANSFORMER_BATCH_SIZE = 64
+LEARNING_RATE = 0.0005
+DROPOUT = 0.1
+ALPHA = 0.5
+TEMP = 2.0
+TRAIN_DIR = 'train'
+VAL_DIR = 'val'
+
 class AudioTransformer(nn.Module):
     def __init__(self):
         super(AudioTransformer, self).__init__()
@@ -52,14 +81,11 @@ class AudioTransformer(nn.Module):
         return logits
 
 class DistillationDataset(Dataset):
-    def __init__(self, data_dir, teacher_logits_path=None):
+    def __init__(self, data_dir, teacher_logits_path):
         self.data = []
         self.labels = []
-        self.teacher_logits = None
-        if teacher_logits_path is not None:
-            if not os.path.exists(teacher_logits_path):
-                raise FileNotFoundError(f"Teacher logits file not found at {teacher_logits_path}")
-            self.teacher_logits = torch.load(teacher_logits_path)
+        self.teacher_logits = torch.load(teacher_logits_path)
+        idx = 0
         for label, class_name in enumerate(CLASSES):
             class_dir = os.path.join(data_dir, class_name)
             if not os.path.isdir(class_dir):
@@ -69,23 +95,21 @@ class DistillationDataset(Dataset):
                     file_path = os.path.join(class_dir, file_name)
                     self.data.append(file_path)
                     self.labels.append(label)
-        if self.teacher_logits is not None and len(self.teacher_logits) != len(self.data):
-            raise ValueError("Number of teacher logits does not match number of data samples.")
+                    idx += 1
     def __len__(self):
         return len(self.data)
     def __getitem__(self, idx):
         file_path = self.data[idx]
         label = self.labels[idx]
-        if self.teacher_logits is not None:
-            teacher_logit = self.teacher_logits[idx]
-            return file_path, label, teacher_logit
-        else:
-            return file_path, label
+        teacher_logit = self.teacher_logits[idx]
+        return file_path, label, teacher_logit
 
-def preprocess_audio_teacher(file_path):
-    feature = preprocess_audio(file_path, sampling_rate=4000, n_mfcc=10, seq_length=128, hop_length=256)
+def preprocess_audio_transformer(file_path):
+    feature = preprocess_audio(file_path, sampling_rate=TRANSFORMER_SAMPLING_RATE, n_mfcc=TRANSFORMER_N_MFCC, seq_length=TRANSFORMER_FRAMES, hop_length=TRANSFORMER_HOP_LENGTH)
+    #print(f"Feature shape before adding frame counts: {feature.shape}")
     frame_counts = np.arange(feature.shape[0]).reshape(-1, 1)
     feature = np.concatenate((feature, frame_counts), axis=1)
+    #print(f"Feature shape after adding frame counts: {feature.shape}")
     return torch.tensor(feature, dtype=torch.float32)
 
 def preprocess_batch(file_paths):
@@ -93,6 +117,18 @@ def preprocess_batch(file_paths):
     stacked_batch = torch.stack(features_batch).to(DEVICE)
     #print(f"Stacked batch shape: {stacked_batch.shape}")
     return stacked_batch
+
+def precompute_teacher_logits(teacher_model, train_loader, save_path):
+    teacher_model.eval()
+    all_teacher_logits = []
+    with torch.no_grad():
+        for file_paths, _ in train_loader:
+            features_batch = preprocess_batch(file_paths)
+            logits = teacher_model(features_batch)
+            all_teacher_logits.append(logits.cpu())
+    all_teacher_logits = torch.cat(all_teacher_logits, dim=0)
+    torch.save(all_teacher_logits, save_path)
+    print(f'Teacher logits saved to {save_path}')
 
 def infer_transformer(file_paths, transformer_model):
     transformer_model.eval()
@@ -110,13 +146,9 @@ def evaluate_transformer(model, val_loader):
     total_correct = 0
     total_samples = 0
     with torch.no_grad():
-        for batch in val_loader:
-            if len(batch) == 3:
-                _, labels, _ = batch
-            else:
-                _, labels = batch
+        for file_paths, labels in val_loader:
             labels = labels.to(DEVICE)
-            preds, _, _ = infer(model, batch[0])
+            preds, _, _ = infer(model, file_paths)
             preds = torch.tensor([CLASSES.index(pred) for pred in preds], dtype=torch.long).to(DEVICE)
             total_correct += (preds == labels).sum().item()
             total_samples += labels.size(0)
@@ -126,25 +158,6 @@ def evaluate_transformer(model, val_loader):
 def get_filename_transformer(epoch):
     epoch = str(epoch)
     return f'transformer_{TRANSFORMER_SAMPLING_RATE}_{TRANSFORMER_N_MFCC}_{TRANSFORMER_FRAMES}_{D_MODEL}_{epoch}.pth'
-
-def precompute_teacher_logits(teacher_model, train_loader, save_path):
-    teacher_model.eval()
-    all_teacher_logits = []
-    with torch.no_grad():
-        for batch in train_loader:
-            if len(batch) == 2:
-                file_paths, _ = batch
-            elif len(batch) == 3:
-                file_paths, _, _ = batch
-            else:
-                raise ValueError(f"Unexpected batch size: {len(batch)}")
-            features_batch = [preprocess_audio_teacher(file) for file in file_paths]
-            features_batch = torch.stack(features_batch).to(DEVICE)
-            logits = teacher_model(features_batch)
-            all_teacher_logits.append(logits.cpu())
-    all_teacher_logits = torch.cat(all_teacher_logits, dim=0)
-    torch.save(all_teacher_logits, save_path)
-    print(f'Teacher logits saved to {save_path}')
 
 def main_transformer(mode, input_file=None):
     if mode == 'train':
@@ -156,11 +169,12 @@ def main_transformer(mode, input_file=None):
         criterion_ce = nn.CrossEntropyLoss()
         criterion_kd = nn.KLDivLoss(reduction='batchmean')
         optimizer = optim.Adam(transformer_model.parameters(), lr=LEARNING_RATE)
-        train_dataset_initial = DistillationDataset(TRAIN_DIR)
+        train_dataset_initial = DistillationDataset(TRAIN_DIR, teacher_logits_path=None)
         train_loader_initial = DataLoader(train_dataset_initial, batch_size=TRANSFORMER_BATCH_SIZE, shuffle=False)
-        precompute_teacher_logits(teacher_model, train_loader_initial, TEACHER_LOGITS_PATH)
-        train_dataset = DistillationDataset(TRAIN_DIR, teacher_logits_path=TEACHER_LOGITS_PATH)
-        val_dataset = DistillationDataset(VAL_DIR)
+        teacher_logits_path = 'teacher_logits.pth'
+        precompute_teacher_logits(teacher_model, train_loader_initial, teacher_logits_path)
+        train_dataset = DistillationDataset(TRAIN_DIR, teacher_logits_path)
+        val_dataset = DistillationDataset(VAL_DIR, teacher_logits_path=None)
         train_loader = DataLoader(train_dataset, batch_size=TRANSFORMER_BATCH_SIZE, shuffle=True)
         val_loader = DataLoader(val_dataset, batch_size=TRANSFORMER_BATCH_SIZE, shuffle=False)
         highest_accuracy = MIN_ACCURACY
@@ -170,8 +184,7 @@ def main_transformer(mode, input_file=None):
             start_time = time.time()
             transformer_model.train()
             batch_losses = []
-            for batch in train_loader:
-                file_paths, labels, teacher_logits = batch
+            for file_paths, labels, teacher_logits in train_loader:
                 labels = labels.to(DEVICE)
                 teacher_logits = teacher_logits.to(DEVICE)
                 optimizer.zero_grad()
