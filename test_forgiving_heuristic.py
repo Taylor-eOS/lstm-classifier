@@ -20,7 +20,7 @@ def read_predictions(file_path):
 
 def main():
     import argparse
-    from process_file import apply_forgiving_heuristic
+    from process_file import run_forgiving_scripts
     parser = argparse.ArgumentParser(description="Apply forgiving heuristic to predictions from a file.")
     parser.add_argument('--file', type=str, default='list.txt', help='Path to the predictions file (default: list.txt)')
     args = parser.parse_args()
@@ -29,10 +29,16 @@ def main():
         print("No valid predictions found. Exiting.")
         sys.exit(0)
     print(f"Loaded {len(predictions)} predictions from '{args.file}'.")
-    corrected_predictions = apply_forgiving_heuristic(predictions)
+    predictions = run_forgiving_scripts(predictions)
     print("Corrected Predictions:")
-    for idx, pred in enumerate(corrected_predictions, start=1):
+    for idx, pred in enumerate(predictions, start=1):
         print(f"Chunk {idx}: {pred}")
+    if all(pred == 'A' for pred in predictions):
+        print('All predictions are A')
+    elif all(pred == 'B' for pred in predictions):
+        print('All predictions are B')
+    else:
+        print('Predictions are both types')
 
 if __name__ == "__main__":
     main()

@@ -32,8 +32,6 @@ def main():
                 try:
                     convert_wav(processed_wav_path, output_mp3_path)
                     print(f"Converted processed file to '{os.path.basename(output_mp3_path)}'.")
-                    os.makedirs('export', exist_ok=True)
-                    #shutil.move(wav_path, 'export')
                     os.remove(processed_wav_path)
                 except Exception as e:
                     print(f"Failed to convert '{processed_wav_path}' to MP3: {e}")

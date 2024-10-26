@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from utils import AudioDataset, preprocess_audio, create_empty_folder
+from utils import AudioDataset, preprocess_audio, create_empty_folder, CLASSES
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 SAMPLING_RATE = 4000
@@ -27,7 +27,6 @@ TRAIN_DIR = 'train'
 VAL_DIR = 'val'
 BATCH_PROPORTION = 4
 CHUNK_LENGTH = 8192
-CLASSES = ['A', 'B']
 
 class AudioClassifier(nn.Module):
     def __init__(self):

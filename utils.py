@@ -7,6 +7,7 @@ from pydub import AudioSegment
 import torch
 from torch.utils.data import Dataset
 
+CLASSES = ['A', 'B']
 LAST_PRINT_TIME = 0
 PRINT_DEBUG = False
 
@@ -17,8 +18,7 @@ class AudioDataset(Dataset):
         self.seq_length = seq_length
         self.sampling_rate = sampling_rate
         self.n_mfcc = n_mfcc
-        classes = ['A', 'B']
-        for label, class_name in enumerate(classes):
+        for label, class_name in enumerate(CLASSES):
             class_dir = os.path.join(data_dir, class_name)
             if not os.path.isdir(class_dir):
                 continue
