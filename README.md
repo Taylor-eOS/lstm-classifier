@@ -9,13 +9,12 @@ This project is an excellent simple example of neural net technology in use, tha
 ### Instructions
 
 1. **Creating ground truth:**
-   - Put your unsegmented wav files and space-separated `segments.txt` into `input` folder. These can be created using `tool_manually_label_audio.py` and `tool_finetune_transitions.py`.
+   - Put your unsegmented wav files and a space-separated `segments.txt` containing the ground truth timestamps into the `input` folder. These labels can be created using `tool_manually_label_audio.py`.
    - Run `tool_cut_segments.py` to split your files up according to the labels.
-   - Run `tool_separate_chunks.py` to separate your files into training-sized chunks. It will randomly set aside a given proportion of your files as a validation set and move the files into the right folders.
-   - Optionally you can use `` to synthesize more files to equalize the size of `A` and `B` types.
+   - Run `tool_separate_chunks.py` to separate your files into training-sized chunks. The script will randomly set aside a given proportion of your files as a validation set and move the files into the right folders.
+   - Optionally you can use `tool_shuffle_more_files` to synthesize more files to even out the amount of `A` and `B` types.
    
 2. **Training the Model:**
-   - My other [project](https://github.com/Taylor-eOS/dual-model-classifier) contains a tool for manually labeling training data in the required format, which will be read by the algorithm in order to create training segments.
    - Run the training script:
      ```bash
      python main.py
