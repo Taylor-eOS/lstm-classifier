@@ -17,17 +17,16 @@ N_MFCC = 10
 SEQ_LENGTH = 128  #aka. frames
 HOP_LENGTH = 256
 HIDDEN_SIZE = 128
-MAX_EPOCHS = 20
 NUM_LAYERS = 2
 BATCH_SIZE = 32
-LEARNING_RATE = 0.00005
+LEARNING_RATE = 0.00008
 STOPPING = False
 ACCURACY_THRESHOLD = 0.99
 MIN_ACCURACY = 0.7
 TRAIN_DIR = 'train'
 VAL_DIR = 'val'
-CHUNK_LENGTH = 8192
-BATCHES_PER_EPOCH = 22
+BATCHES_PER_EPOCH = 32
+MAX_EPOCHS = 40
 
 class AudioClassifier(nn.Module):
     def __init__(self):
@@ -56,7 +55,7 @@ def evaluate(model, val_loader, criterion):
             correct += (preds == labels).sum().item()
     avg_loss = total_loss / len(val_loader)
     accuracy = correct / len(val_loader.dataset)
-    print(f'Accuracy: {accuracy * 100:.1f}%')
+    print(f'Accuracy: {accuracy * 100:.2f}%')
     print(f'Validation Loss: {avg_loss:.3f}')
     return avg_loss, accuracy
 
@@ -87,7 +86,7 @@ def train(model, train_dataset, criterion, optimizer, batch_size=BATCH_SIZE, bat
         num_samples = batches_per_epoch * batch_size
         subset_indices = random.sample(range(total_samples), num_samples)
     subset = Subset(train_dataset, subset_indices)
-    subset_loader = DataLoader(subset, batch_size, shuffle=True)
+    subset_loader = DataLoader(subset, batch_size, shuffle=True, drop_last=True)
     model.train()
     total_loss = 0.0
     for data, labels in subset_loader:
@@ -129,19 +128,21 @@ def main(mode, batch_size=BATCH_SIZE, input_file=None, model=None):
         optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
         train_dataset = AudioDataset(TRAIN_DIR, seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
         val_dataset = AudioDataset(VAL_DIR, seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
-        val_loader = DataLoader(val_dataset, batch_size, shuffle=False)
-        print(f'Total samples: {len(train_dataset)}')
-        print(f'Batches: {len(train_dataset) / BATCH_SIZE}')
+        val_loader = DataLoader(val_dataset, batch_size, shuffle=False, drop_last=True)
+        total_batches = len(train_dataset) / BATCH_SIZE
+        print(f'There are {len(train_dataset)} samples, split up into {total_batches} batches.')
+        if not total_batches.is_integer():
+            print(f'Data file amount not divisible by {BATCHES_PER_EPOCH} batches per epoch.')
+        print(f'Batch sampling: {BATCHES_PER_EPOCH} batches per epoch')
         last_loss = 1.0
         highest_accuracy = MIN_ACCURACY
         best_model = None
-        print(f'Batch sampling: {BATCHES_PER_EPOCH} batches per epoch')
         for epoch in range(max_epochs):
             print(f'Epoch {epoch+1}/{max_epochs}')
             start_time = time.time()
             train(model, train_dataset, criterion, optimizer)
             elapsed_time = time.time() - start_time
-            print(f'Elapsed time: {elapsed_time:.0f} seconds')
+            print(f'Epoch took {elapsed_time:.0f} seconds')
             loss, accuracy = evaluate(model, val_loader, criterion)
             print(f"Loss delta: {(loss - last_loss) * -100:.2f}%")
             last_loss = loss
