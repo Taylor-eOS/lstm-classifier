@@ -21,16 +21,18 @@ This project is an excellent simple example of neural net technology in use, tha
 2. **Running Inference:**
    - To classify a single audio chunk for testing functionality, use the inference mode:
      ```bash
-     python main.py --f file.wav
+     python main.py file.wav
      ```
    - The output will indicate whether the file is classified as `A` or `B`.
 
 3. **Batch Inference for Evaluation:**
    - To evaluate multiple chunks at once and get a percentage accuracy value for model evaluation, place your `.wav` files in the `eval` directory with an `_a` or `_b` at the end of the file name. Run:
      ```bash
-     python evaluate.py
+     python tool_evaluate.py
      ```
    - The script will run through all inferences, compare the results to the labels in the file, and output the accuracy of the classification for all files in the evaluation set. You can use this to optimize the model parameters.
+
+Transformer distillation currently doesn't work because of dimension mismatches. But there is a files to train a transformer from ground truth.
 
 ### Requirements
 - Python 3
