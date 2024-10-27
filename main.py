@@ -12,19 +12,17 @@ from torch.utils.data import DataLoader, Subset
 from utils import AudioDataset, preprocess_audio, create_empty_folder, CLASSES
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-SAMPLING_RATE = 4000
+SAMPLING_RATE = 4096
 N_MFCC = 10
-SEQ_LENGTH = 128  #aka. frames
+SEQ_LENGTH = 131  #aka. frames
 HOP_LENGTH = 256
 HIDDEN_SIZE = 128
 NUM_LAYERS = 2
 BATCH_SIZE = 32
-LEARNING_RATE = 0.00008
-STOPPING = False
-ACCURACY_THRESHOLD = 0.99
-MIN_ACCURACY = 0.7
-TRAIN_DIR = 'train'
-VAL_DIR = 'val'
+LEARNING_RATE = 0.00006
+EARLY_STOPPING = False
+ACCURACY_THRESHOLD = 0.992
+MIN_ACCURACY = 0.65
 BATCHES_PER_EPOCH = 32
 MAX_EPOCHS = 40
 
@@ -126,19 +124,27 @@ def main(mode, batch_size=BATCH_SIZE, input_file=None, model=None):
         model = AudioClassifier().to(DEVICE)
         criterion = nn.NLLLoss()
         optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-        train_dataset = AudioDataset(TRAIN_DIR, seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
-        val_dataset = AudioDataset(VAL_DIR, seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
+        train_dataset = AudioDataset('train', seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
+        val_dataset = AudioDataset('val', seq_length=SEQ_LENGTH, sampling_rate=SAMPLING_RATE, n_mfcc=N_MFCC)
         val_loader = DataLoader(val_dataset, batch_size, shuffle=False, drop_last=True)
         total_batches = len(train_dataset) / BATCH_SIZE
         print(f'There are {len(train_dataset)} samples, split up into {total_batches} batches.')
         if not total_batches.is_integer():
             print(f'Data file amount not divisible by {BATCHES_PER_EPOCH} batches per epoch.')
         print(f'Batch sampling: {BATCHES_PER_EPOCH} batches per epoch')
+        print(f'Learning rate: {LEARNING_RATE:.10f}'.rstrip('0').rstrip('.'))
+        print(f'Sampling rate: {SAMPLING_RATE}')
+        print(f'Number of MFCC spectra: {N_MFCC}')
+        print(f'Sequence length: {SEQ_LENGTH}')
+        print(f'Hidden size: {HIDDEN_SIZE}')
+        print('-Training:')
         last_loss = 1.0
         highest_accuracy = MIN_ACCURACY
         best_model = None
         for epoch in range(max_epochs):
             print(f'Epoch {epoch+1}/{max_epochs}')
+            unique_coverage = (total_batches * (1 - ((total_batches - BATCHES_PER_EPOCH) / total_batches) ** epoch)) / total_batches
+            print(f'Unique coverage: {unique_coverage:.4f}')
             start_time = time.time()
             train(model, train_dataset, criterion, optimizer)
             elapsed_time = time.time() - start_time
@@ -155,8 +161,8 @@ def main(mode, batch_size=BATCH_SIZE, input_file=None, model=None):
                     os.remove(best_model)
                 best_model = filename
             else:
-                print('Not saving model with lower accuracy')
-            if accuracy >= ACCURACY_THRESHOLD and STOPPING:
+                print('Not saving model due to low accuracy')
+            if accuracy >= ACCURACY_THRESHOLD and EARLY_STOPPING:
                 print(f"Accuracy {accuracy} is above {ACCURACY_THRESHOLD}. Stopping early.")
                 break
             print('')

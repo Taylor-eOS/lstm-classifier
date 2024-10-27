@@ -10,7 +10,7 @@ from torch.utils.data import Dataset, DataLoader
 from main import main, get_filename, get_matching_file, get_model, DEVICE, ACCURACY_THRESHOLD, MIN_ACCURACY, BATCH_SIZE
 from utils import preprocess_audio, create_empty_folder
 
-TRANSFORMER_SAMPLING_RATE = 2000
+TRANSFORMER_SAMPLING_RATE = 2048
 TRANSFORMER_N_MFCC = 4
 TRANSFORMER_FRAMES = 32 #frames
 TRANSFORMER_HOP_LENGTH = 512
@@ -176,7 +176,7 @@ def main_transformer(mode, input_file=None):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Audio Classification Script')
-    parser.add_argument('--f', type=str, help='Path to audio file for inference')
+    parser.add_argument('f', type=str, nargs='?', help='Path to audio file for inference')
     args = parser.parse_args()
     mode = 'infer' if args.f else 'train'
     main_transformer(mode, args.f)
