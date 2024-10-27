@@ -11,8 +11,8 @@ from main import infer, BATCH_SIZE, get_model, get_matching_file, get_filename
 from utils import CLASSES
 
 CHUNK_LENGTH = 8192
-PRINT_CORRECTED_PREDICTIONS = True
-PRINT_UNCORRECTED_PREDICTIONS = True
+PRINT_CORRECTED_PREDICTIONS = False
+PRINT_UNCORRECTED_PREDICTIONS = False
 KEEP_CHUNKS = False
 
 def first_forgiving_heuristic(predictions):

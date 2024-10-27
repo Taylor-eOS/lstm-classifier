@@ -37,6 +37,7 @@ def main():
                     print(f"Failed to convert '{processed_wav_path}' to MP3: {e}")
             else:
                 print(f"Processed WAV file '{processed_wav_path}' not found.")
+        print('')
 
 if __name__ == "__main__":
     main()
