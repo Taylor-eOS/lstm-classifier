@@ -1,8 +1,8 @@
 ## LSTM-Classifier
 
 This was a exploration project meant to get familiar with machine learning and neural network programming. The script uses a LSTM (Long Short-Term Memory) architecture to classify chunks of audio into two content types. The project extracts and process MFCC features from audio files in order to train a neural net to learn the distinctive patterns that distinguish the types of input data. It can then predict what type a unseen chunk of audio is. It is a complete reassembly of a project from [amsterg](https://github.com/amsterg/Podcast-Ad-Detection), to whom I concede the creative credit.\
-This version is optimized for home computers. It is less fine-grained and uses lower qualities than the original. Training is fast and can be done in non-painful time on a CPU. My tests show near-100% accurate predictions on unseen data after just a few training epochs and with only five input episodes.\
-The project contains tools for labeling ground truth data, but these require some time investment to be understood.\
+This version is optimized for home computers. It is less fine-grained and uses lower qualities than the original. Training is fast and can be done in non-painful time on a CPU. Most of the time it takes is actually to convert the files to wav, since the MFCC extraction had problems with mp3 input. My tests show near-100% accurate predictions on unseen data after just a few training epochs and with only five input episodes.\
+The project contains tools for labeling ground truth data, but these require some time investment to be used correctly.\
 Note: This is a hobby project. It consists of crude source code that is not set up to be user friendly. The functions are made specific to a particular use case and include hardcoded values that may not work with all inputs. The script may at times not check for deviations from the expected use. To get this to work, it would require understanding the source code and manually setting up and adapting the code for your content.\
 This project is an excellent simple example of neural net technology in use, that can be used for studying the technology.
 
